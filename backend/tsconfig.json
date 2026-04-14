@@ -42,6 +42,10 @@
     "skipLibCheck": true,
     "allowImportingTsExtensions": true,
     "moduleResolution": "bundler",
-    "noEmit": true
+    "noEmit": true,
+
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   }
 }
