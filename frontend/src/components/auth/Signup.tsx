@@ -39,7 +39,8 @@ const Signup = ({onChangeMode}: IProps) => {
 
         //todo: call API for creating user.
         console.log("form data", form);
-        const response = await fetch(import.meta.env.VITE_API_URL, {
+        const response = await fetch(import.meta.env.VITE_API_URL + '/auth/create', {
+            method: 'POST',
             headers: {
                 'content-type': 'application/json'
             },

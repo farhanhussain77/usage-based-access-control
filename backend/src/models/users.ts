@@ -1,15 +1,11 @@
 import { Schema, model } from 'mongoose';
 
-const enum Plan {
-    Basic = 'basic',
-    Plus = 'plus',
-    Pro = 'pro'
-}
-
 export interface IUser {
+  _id: string;
   name?: string;
   email: string;
   password: string;
+  stripe_customer_id?: string;
 }
 
 const userSchema = new Schema<IUser>({
@@ -18,6 +14,10 @@ const userSchema = new Schema<IUser>({
   password: {
     type: String,
     required: true
+  },
+  stripe_customer_id: {
+    type: String,
+    required: false
   }
 });
 

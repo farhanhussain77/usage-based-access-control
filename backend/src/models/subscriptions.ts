@@ -1,19 +1,32 @@
 import { Schema, model, Types } from 'mongoose';
-import { User } from './users';
+import { User } from './users.ts';
 
-const enum Plan {
-    Basic = 'basic',
-    Plus = 'plus',
-    Pro = 'pro'
+const Plan = {
+    Basic: 'basic',
+    Plus: 'plus',
+    Pro: 'pro'
+} as const;
+
+export type PlanKeys = typeof Plan[keyof typeof Plan]
+
+export const MAX_USAGE = {
+    basic: 5,
+    pro: 10,
+    plus: 20
 }
 
 interface ISubscription {
+    _id: Types.ObjectId;
     user_id: Types.ObjectId;
-    plan: Plan;
+    plan: PlanKeys;
     stripe_subscription_id: string;
-    usage_limit: string;
-    max_usage_limit: string;
+    current_usage: number;
+    max_usage_limit: number;
+    start_date: Date
+    status: string;
 }
+
+
 
 const subscriptionSchema = new Schema<ISubscription>({
     user_id: { 
@@ -29,17 +42,28 @@ const subscriptionSchema = new Schema<ISubscription>({
     },
     stripe_subscription_id: {
         type: String,
-        required: true
+        required: false
     },
-    usage_limit: {
-        type: String,
-        required: true
+    current_usage: {
+        type: Number,
+        required: true,
+        default: 0
     },
     max_usage_limit: {
+        type: Number,
+        required: true,
+        default: MAX_USAGE.basic
+    },
+    start_date: {
+        type: Date,
+        required: true,
+    },
+    status: {
         type: String,
-        required: true
+        required: true,
+        default: 'active'
     }
 });
 
 
-export const Subscriptions = model('User', subscriptionSchema);
+export const Subscriptions = model('Subscription', subscriptionSchema);

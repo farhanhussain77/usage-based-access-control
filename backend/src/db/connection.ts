@@ -3,7 +3,6 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 const connectionString = process.env.DB_CONNECTION!;
-const dbName = process.env.DB_NAME!;
 
 const connectToDB = async () => {
     try {
