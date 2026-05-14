@@ -14,7 +14,7 @@ export const featureAccess = async (req: Request, res: Response) => {
     }
 
     if(subscription.max_usage_limit === subscription.current_usage){
-        return res.status(429).json({success: false, message: "Your usage quota exceeded the limit. Please consider to updarage!"})
+        return res.status(429).json({success: false, message: "Your usage quota exceeded the limit. Please consider to upgrade!"})
     }
 
     subscription.current_usage = subscription.current_usage + 1;

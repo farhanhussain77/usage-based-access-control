@@ -27,7 +27,7 @@ const Pricing = () => {
 
         try{
             setSelectedPlan(plan);
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/stripe/create-checkout`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/stripe/create-checkout`, {
                 method: "POST",
                 headers: {
                     'content-type': 'application/json',
@@ -58,7 +58,7 @@ const Pricing = () => {
     // const downgrade = async () => {
     //     const token = Cookies.get("token");
 
-    //     const response = await fetch(`${import.meta.env.VITE_API_URL}/feature/downgrade`, {
+    //     const response = await fetch(`${import.meta.env.VITE_API_URL}/api/feature/downgrade`, {
     //         method: "GET",
     //         headers: {
     //             'content-type': 'application/json',

@@ -38,7 +38,7 @@ const Login = ({onChangeMode}: IProps) => {
     const onSubmit = async (e: SubmitEvent) => {
         e.preventDefault();
 
-        const resonse = await fetch(`${import.meta.env.VITE_API_URL}/auth/login`, {
+        const resonse = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/login`, {
             method: 'POST',
             headers: {
                 'content-type': 'application/json'
