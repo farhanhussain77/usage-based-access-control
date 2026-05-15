@@ -15,6 +15,7 @@ interface IProps {
 }
 
 const Signup = ({onChangeMode}: IProps) => {
+    
     const [form, setForm] = useState({
         email: '',
         password: '',
@@ -39,7 +40,7 @@ const Signup = ({onChangeMode}: IProps) => {
 
         //todo: call API for creating user.
         console.log("form data", form);
-        const response = await fetch(import.meta.env.VITE_API_URL + '/auth/create', {
+        const response = await fetch(import.meta.env.VITE_API_URL + '/api/auth/create', {
             method: 'POST',
             headers: {
                 'content-type': 'application/json'
@@ -56,6 +57,7 @@ const Signup = ({onChangeMode}: IProps) => {
         }
 
         const result = await response.json();
+        onChangeMode();
         console.log("user created:", result);
     }
 

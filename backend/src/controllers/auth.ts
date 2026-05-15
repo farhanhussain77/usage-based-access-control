@@ -63,6 +63,7 @@ const login = async (req: Request, res: Response) => {
                 limit_exceeded: subscription?.current_usage === subscription?.max_usage_limit
             }
         }
+    
 
         const token = jwt.sign({user: userPayload}, process.env.JWT_SECRET as string, {
             expiresIn: '1d'

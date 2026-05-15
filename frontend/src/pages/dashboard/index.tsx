@@ -7,13 +7,14 @@ import { Link } from "react-router";
 
 const Dashboard = () => {
     const [loading, setLoaidng] = useState(false);
+    const [limitExceeded, setLimitExceeded] = useState(false);
     const { getUser } = use(AuthContext);
 
     const callApi = async () => {
         setLoaidng(true);
 
         try{
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/feature`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/feature`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -21,13 +22,23 @@ const Dashboard = () => {
                 }
             });
 
+            const result = await response.json();
+
             if(!response.ok){
-                const error = await response.text();
-                console.error("Error calling API:", error);
+                console.error("Error calling APII:", result);
+                if (response.status === 429) {
+                    setLimitExceeded(true);
+                }
+
+                return
             }
 
-            const result = await response.json();
+            setLimitExceeded(true);
+            
             console.log("result", result);
+
+
+
         }catch(error){
             console.error("Error calling API:", error);
 
@@ -53,7 +64,7 @@ const Dashboard = () => {
                     <span>Call API</span>
                 )}
             </Button>
-            {user?.subscription?.limit_exceeded && (
+            {(user?.subscription?.limit_exceeded || limitExceeded) && (
                 <div className="mt-5">
                     <span className="text-xs text-red-600">Your API usage limit exceeded. Please consider to </span>
                     <Link className="text-xs underline font-semibold" to="/pricing">Upgrade</Link>

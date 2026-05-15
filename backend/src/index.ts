@@ -12,7 +12,7 @@ import Stripe from 'stripe';
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
 
 const app = express();
-app.use(cors());
+app.use(cors(({ origin: process.env.LOCALHOST_URL })));
 
 const port = process.env.PORT || 3000;
 
@@ -24,7 +24,7 @@ app.get('/', async (req, res) => {
 });
 
 app.post(
-  '/api/stripe/webhook',
+'/api/stripe/webhook',
   bodyParser.raw({ type: 'application/json' }),
   handleWebhook
 );

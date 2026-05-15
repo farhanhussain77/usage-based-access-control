@@ -37,7 +37,7 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
         const currentPlan = subscription?.plan;
         const newPlan = planIdToNameMapper[product_id as keyof typeof planIdToNameMapper];
 
-        const isUpgrading = true //currentPlan === "pro" && newPlan === "plus";
+        const isUpgrading = currentPlan === "pro" && newPlan === "plus"; //currentPlan === "pro" && newPlan === "plus";
 
         let session;
         if(isUpgrading){
