@@ -4,7 +4,12 @@ import Auth from './pages/auth';
 import Dashboard from './pages/dashboard';
 import Pricing from './components/pricing/Pricing';
 import MainLayout from './components/layouts/MainLayout';
+import AdminLayout from './components/admin/AdminLayout';
 import AuthProvider from './contexts/Auth';
+import AdminPlans from "./pages/admin/Plans";
+
+const Users = () => <div>Users Page</div>;
+
 
 function App() {
   return (
@@ -15,6 +20,10 @@ function App() {
           <Route element={<MainLayout />}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/pricing" element={<Pricing />} />
+          </Route>
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route path="users" element={<Users />} />
+            <Route path="plans" element={<AdminPlans />} />
           </Route>
         </Routes>
       </BrowserRouter>
