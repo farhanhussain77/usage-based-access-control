@@ -33,7 +33,7 @@ const Dashboard = () => {
                 return
             }
 
-            setLimitExceeded(true);
+            setLimitExceeded(false);
             
             console.log("result", result);
 

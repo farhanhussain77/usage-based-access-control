@@ -1,6 +1,6 @@
-import { planIdToLimitMapper, planIdToNameMapper } from '../lib/plansMapper.ts';
 import { Subscriptions } from '../models/subscriptions.ts';
 import { User } from '../models/users.ts';
+import { Plans } from '../models/plans.ts';
 import type { Request, Response } from 'express';
 import Stripe from 'stripe';
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string)
@@ -24,21 +24,19 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
         if(!user){
             return res.status(404).json({meesage: "user not found"});
         }
-        const product = await stripe.products.retrieve(product_id);
 
-        if(!product){
-            return res.status(400).json({message: "Product not found"})
+        const newPlan = await Plans.findOne({ stripe_product_id: product_id });
+        if (!newPlan) {
+            return res.status(400).json({ message: "Plan not found" });
         }
 
-        const subscription = await Subscriptions.findOne({user_id: user._id})
+        const subscription = await Subscriptions.findOne({user_id: user._id}).populate("plan_id");
         if(!subscription){
             return res.status(400).json({message: "Subscription not found"})
         }
-        const currentPlan = subscription?.plan;
-        const newPlan = planIdToNameMapper[product_id as keyof typeof planIdToNameMapper];
-
-        const isUpgrading = currentPlan === "pro" && newPlan === "plus"; //currentPlan === "pro" && newPlan === "plus";
-
+        const currentPlan = subscription.plan_id as any;
+        const isUpgrading = currentPlan?.name === "pro" && newPlan?.name === "plus";; //currentPlan === "pro" && newPlan === "plus";
+        console.log("uppGrading fetched", isUpgrading, "dcsasa");
         let session;
         if(isUpgrading){
             const stripeSubscription = await stripe.subscriptions.retrieve(subscription.stripe_subscription_id);
@@ -60,14 +58,15 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
                 success_url,
                 line_items: [
                     {
-                        price: product.default_price as string,
+                        price: newPlan.stripe_price_id as string,
                         quantity: 1
                     }
                 ],
                 mode: "subscription",
                 ...(req.user?._id && {
                     metadata: {
-                        user_id: req.user?._id.toString()
+                        user_id: req.user?._id.toString(),
+                        plan_id: newPlan._id.toString()
                     }
                 }),
                 ...(user?.stripe_customer_id && {customer: user?.stripe_customer_id}),
@@ -114,8 +113,8 @@ export const handleWebhook = async (req: Request, res: Response) => {
             handleInvoicePaid(event);
         }else if(event.type === "customer.subscription.deleted"){
             handleSubscriptionDeleted(event);
-        }else if(event.type === "invoice.payment_succeeded"){
-            handlePaymentSucceeded(event);
+        }else if (event.type === "invoice.payment_failed") {
+            await handleInvoicePaymentFailed(event);
         }
 
         return res.sendStatus(200);
@@ -126,71 +125,91 @@ export const handleWebhook = async (req: Request, res: Response) => {
 }
 
 const handleInvoicePaid = async (event: any) => {
-    console.log("executing handleInvoicePaid...");
-    const data = event?.data?.object;
-    const customerId = data?.customer;
+    console.log("invoice.paid");
 
-    const user = await User.findOne({stripe_customer_id: customerId});
-    if(!user){
-        console.log("[handleInvoicePaid]: user not found against this customer: ", customerId);
-        return false;
-    }
-
-    await Subscriptions.findOneAndUpdate({user_id: user._id.toString()}, {status: 'active'});
-}
-
-export const handleCheckoutSessionCompleted = async (event: any): Promise<boolean> => {
-    console.log("executing handleCheckoutSessionCompleted...");
-    const object = event?.data?.object;
-
-    try{
-        const userId = object?.metadata?.user_id;
-
-        if(!userId){
-            console.log("user id not found in checkout session");
-            return false;
-        }
-
-        const customerId = object?.customer;
+    try {
+        const data = event.data.object;
+        const customerId = data.customer;
         if(!customerId){
             console.log("customerId id not found in checkout session");
             return false;
         }
 
-        const subscriptionId = object?.subscription;
+        const user = await User.findOne({ stripe_customer_id: customerId });
+        if(!user){
+            console.log("User does not exist against the id");
+            return false;
+        }
+        await Subscriptions.findOneAndUpdate(
+            { user_id: user._id },
+            {
+                current_usage: 0,
+                status: "active"
+            }
+        );
+
+        return true;
+    } catch (err) {
+        console.error(err);
+        return false;
+    }
+};
+
+const handleCheckoutSessionCompleted = async (event: any) => {
+    console.log("checkout.session.completed");
+
+    try {
+        const obj = event.data.object;
+
+        const userId = obj.metadata?.user_id;
+        if(!userId){
+            console.log("user id not found in checkout session");
+            return false;
+        }
+        const customerId = obj.customer;
+        if(!customerId){
+            console.log("customerId id not found in checkout session");
+            return false;
+        }
+        const subscriptionId = obj.subscription;
         if(!subscriptionId){
             console.log("subscriptionId id not found in checkout session");
             return false;
         }
-        
-        const stripeSubscription = await stripe.subscriptions.retrieve(subscriptionId);
-        
-        const user = await User.findById(userId);
-        if(!user){
-            console.log("User does not exist against this id: ", userId);
-            return false;
-        }
 
-        const updatedPlanId = stripeSubscription?.items?.data[0]?.plan?.product;
-        if(!updatedPlanId){
-            console.log("stripe product id agains updated plan not found for this customer: ", customerId);
-            return false;
-        }
-        const planName = planIdToNameMapper[updatedPlanId as keyof typeof planIdToNameMapper];
-        const planLimit = planIdToLimitMapper[planName as keyof typeof planIdToLimitMapper];
+        const stripeSub = await stripe.subscriptions.retrieve(subscriptionId);
+
+        const productId = stripeSub.items.data[0]?.plan?.product as string;
+
+        const plan = await Plans.findOne({
+            stripe_product_id: productId as string
+        });
+
+        if (!plan) return false;
 
         await Promise.all([
-            User.findByIdAndUpdate(userId, {stripe_customer_id: customerId}),
-            Subscriptions.findOneAndUpdate({user_id: user._id.toString()}, {plan: planName, max_usage_limit: planLimit, stripe_subscription_id: subscriptionId, start_date: stripeSubscription?.start_date})
+            User.findByIdAndUpdate(userId, {
+                stripe_customer_id: customerId
+            }),
+
+            Subscriptions.findOneAndUpdate(
+                { user_id: userId },
+                {
+                    plan_id: plan._id,
+                    stripe_subscription_id: subscriptionId,
+                    start_date: new Date(stripeSub.start_date),
+                    status: "active"
+                },
+                { upsert: true }
+            )
         ]);
 
         return true;
-    }catch(err){
+    } catch (err) {
         console.error(err);
         return false;
     }
-
-}
+};
 
 export const handleSubscriptionDeleted = async (event: any) => {
     console.log("executing handleSubscriptionDeleted...");
@@ -206,27 +225,49 @@ export const handleSubscriptionDeleted = async (event: any) => {
     await Subscriptions.findOneAndUpdate({user_id: user._id.toString()}, {status: 'inactive'});
 }
 
-export const handlePaymentSucceeded = async (event: any) => {
-    console.log("executing handlePaymentSucceeded...");
-    const data = event?.data?.object;
+export const handleInvoicePaymentFailed = async (event: any) => {
+    console.log("executing handleInvoicePaymentFailed...");
 
-    if(data?.billing_reason === "subscription_cycle"){
-        try{
-            const data = event?.data?.object;
-            const customerId = data?.customer;
-    
-            const user = await User.findOne({stripe_customer_id: customerId});
-            if(!user){
-                console.log("[handleSubscriptionUpdated]: user not found against this customer: ", customerId);
-                return false;
-            }
+    try {
+        const invoice = event?.data?.object;
 
-            await Subscriptions.findOneAndUpdate({user_id: user._id.toString()}, {current_usage: 0, start_date: new Date()})
-    
-            return true;
-        }catch(err){
-            console.error(err);
+        const customerId = invoice?.customer;
+        const subscriptionId = invoice?.subscription;
+
+        if (!customerId || !subscriptionId) {
+            console.log("[invoice.payment_failed]: missing data");
             return false;
         }
+
+        const user = await User.findOne({ stripe_customer_id: customerId });
+
+        if (!user) {
+            console.log("[invoice.payment_failed]: user not found", customerId);
+            return false;
+        }
+
+        const subscription = await Subscriptions.findOne({
+            user_id: user._id.toString(),
+            stripe_subscription_id: subscriptionId
+        });
+
+        if (!subscription) {
+            console.log("[invoice.payment_failed]: subscription not found");
+            return false;
+        }
+
+        await Subscriptions.findByIdAndUpdate(subscription._id, {
+            status: "past_due"
+        });
+
+        console.log(
+            `[invoice.payment_failed]: marked past_due for user ${user.email}`
+        );
+
+        return true;
+
+    } catch (err) {
+        console.error("[invoice.payment_failed]: error", err);
+        return false;
     }
-}
+};
