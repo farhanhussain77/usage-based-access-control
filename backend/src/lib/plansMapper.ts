@@ -1,6 +1,6 @@
 export const planIdToNameMapper = {
-    "prod_UKlobiqhF1mZOM": "plus",
-    "prod_UKln64o3kc978R": "pro"
+    "prod_UWLcg8xRsMYr4t": "plus",
+    "prod_UWLbAiIxdVB787": "pro"
 }
 
 export const planIdToLimitMapper = {

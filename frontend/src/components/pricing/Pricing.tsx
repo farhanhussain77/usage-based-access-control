@@ -7,8 +7,8 @@ import Cookies from 'js-cookie';
 import { Loader2 } from "lucide-react";
 
 const planMapper = {
-    "plus": "prod_UKlobiqhF1mZOM",
-    "pro": "prod_UKln64o3kc978R"
+    "plus": "prod_UWLcg8xRsMYr4t",
+    "pro": "prod_UWLbAiIxdVB787"
 
 }
 
@@ -35,7 +35,7 @@ const Pricing = () => {
                 },
                 body: JSON.stringify({
                     product_id: priceId,
-                    success_url: "http://localhost:5174"
+                    success_url: "http://localhost:5173"
                 })
             });
     

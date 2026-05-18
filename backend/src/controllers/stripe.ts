@@ -118,7 +118,7 @@ export const handleWebhook = async (req: Request, res: Response) => {
             handlePaymentSucceeded(event);
         }
 
-        return res.status(201);
+        return res.sendStatus(200);
     }catch(err){
         console.log("Error during webhook call: ", err);
         return res.status(500).json({message: "Internal server error"});
@@ -162,9 +162,9 @@ export const handleCheckoutSessionCompleted = async (event: any): Promise<boolea
             console.log("subscriptionId id not found in checkout session");
             return false;
         }
-
+        
         const stripeSubscription = await stripe.subscriptions.retrieve(subscriptionId);
-
+        
         const user = await User.findById(userId);
         if(!user){
             console.log("User does not exist against this id: ", userId);
@@ -186,7 +186,8 @@ export const handleCheckoutSessionCompleted = async (event: any): Promise<boolea
 
         return true;
     }catch(err){
-        return true;
+        console.error(err);
+        return false;
     }
 
 }
@@ -224,7 +225,8 @@ export const handlePaymentSucceeded = async (event: any) => {
     
             return true;
         }catch(err){
-            return true;
+            console.error(err);
+            return false;
         }
     }
 }
