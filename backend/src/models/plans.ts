@@ -1,73 +1,96 @@
-import { Schema, model } from "mongoose";
-
-export type PlanKey = "basic" | "pro" | "plus";
+import { Schema, model, Types } from "mongoose";
 
 export interface IPlan {
-  _id: string;
-
-  key: PlanKey;
+  _id: Types.ObjectId;
 
   name: string;
 
   type: "internal" | "stripe";
 
-  limits: {
-    monthly_requests: number;
-  };
+  price: number;
 
-  price: {
-    amount: number; // cents
-    currency: "usd";
-  };
+  currency: string;
 
-  stripe?: {
-    product_id?: string;
-    price_id?: string;
-  };
+  max_usage_limit: number;
 
-  isActive: boolean;
+  features: string[];
+
+  stripe_product_id?: string;
+
+  stripe_price_id?: string;
+
+  is_active: boolean;
 }
 
 const planSchema = new Schema<IPlan>(
   {
-    key: {
+    name: {
       type: String,
-      enum: ["basic", "pro", "plus"],
       required: true,
-      unique: true
+      unique: true,
+      lowercase: true,
+      trim: true
     },
-
-    name: { type: String, required: true },
 
     type: {
       type: String,
       enum: ["internal", "stripe"],
-      required: true
-    },
-
-    limits: {
-      monthly_requests: {
-        type: Number,
-        required: true
-      }
+      required: true,
+      default: "stripe"
     },
 
     price: {
-      amount: { type: Number, required: true },
-      currency: { type: String, default: "usd" }
+      type: Number,
+      required: true,
+      default: 0
     },
 
-    stripe: {
-      product_id: String,
-      price_id: String
+    currency: {
+      type: String,
+      default: "usd"
     },
 
-    isActive: {
+    max_usage_limit: {
+      type: Number,
+      required: true
+    },
+
+    features: {
+      type: [String],
+      required: true,
+      default: []
+    },
+
+    stripe_product_id: {
+      type: String,
+      required: false,
+      default: null
+    },
+
+    stripe_price_id: {
+      type: String,
+      required: false,
+      default: null
+    },
+
+    is_active: {
       type: Boolean,
       default: true
     }
   },
-  { timestamps: true }
+  {
+    timestamps: true
+  }
 );
 
-export const Plan = model<IPlan>("Plan", planSchema);
+planSchema.pre("validate", function () {
+  if (this.type === "stripe") {
+    if (!this.stripe_product_id || !this.stripe_price_id) {
+      throw new Error(
+        "stripe_product_id and stripe_price_id are required for stripe plans"
+      );
+    }
+  }
+});
+
+export const Plans = model<IPlan>("Plan", planSchema);

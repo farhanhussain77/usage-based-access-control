@@ -1,4 +1,4 @@
-import { use, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { Button } from "../ui/Button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../ui/card";
 import { AuthContext } from "@/contexts/Auth";
@@ -6,54 +6,92 @@ import { Plan } from "@/types";
 import Cookies from 'js-cookie';
 import { Loader2 } from "lucide-react";
 
-const planMapper = {
-    "plus": "prod_UWLcg8xRsMYr4t",
-    "pro": "prod_UWLbAiIxdVB787"
-
-}
+type Plan = {
+    _id: string;
+    name: string;
+    price: number;
+    max_usage_limit: number;
+    features: string[];
+    stripe_price_id?: string;
+};
 
 const Pricing = () => {
     const {getUser} = use(AuthContext);
 
-    const [selectedPlan, setSelectedPlan] = useState(null);
+    const [plans, setPlans] = useState<Plan[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
 
     const user = getUser();
 
-    const onClickPlan = async (plan: string) => {
-        console.log("plan", plan);
-        const priceId = planMapper[plan as keyof typeof planMapper];
+    const fetchPlans = async () => {
+        setLoading(true);
+        try {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/plans`);
 
+            const data = await res.json();
+
+            if (res.ok) {
+                setPlans(data.plans || []);
+            }
+        } catch (err) {
+            console.log(err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchPlans();
+    }, []);
+
+    const onClickPlan = async (plan: Plan) => {
         const token = Cookies.get("token");
 
-        try{
-            setSelectedPlan(plan);
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/stripe/create-checkout`, {
-                method: "POST",
-                headers: {
-                    'content-type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    product_id: priceId,
-                    success_url: "http://localhost:5173"
-                })
-            });
-    
-            if(!response.ok){
-                const error = await response.json();
-                console.log("Error while creating checkout session: ", error);
-            }
-    
+        try {
+            setSelectedPlan(plan._id);
+
+            const response = await fetch(
+                `${import.meta.env.VITE_API_URL}/api/stripe/create-checkout`,
+                {
+                    method: "POST",
+                    headers: {
+                        "content-type": "application/json",
+                        Authorization: `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        plan_id: plan._id,
+                        success_url: "http://localhost:5173"
+                    })
+                }
+            );
+
             const res = await response.json();
-            console.log("res", res);
-            const url = res?.session?.url;
-            window.location.href = url;
-        }catch(err){
-            console.log("Error: ", err);
-        }finally {
+
+            if (!response.ok) {
+                console.log("Error:", res);
+                return;
+            }
+
+            window.location.href = res?.session?.url;
+        } catch (err) {
+            console.log(err);
+        } finally {
             setSelectedPlan(null);
         }
+    };
+
+    const currentPlan = user?.subscription?.plan;
+
+    if (loading) {
+        return (
+            <div className="flex justify-center items-center h-screen">
+                <Loader2 className="animate-spin" />
+            </div>
+        );
     }
+
+    const sortedPlans = [...plans].sort((a, b) => a.price - b.price);
 
     // const downgrade = async () => {
     //     const token = Cookies.get("token");
@@ -72,92 +110,59 @@ const Pricing = () => {
     //     }
     // }
 
-    const isBasic = user?.subscription?.plan === Plan.Basic
-    const isPro = user?.subscription?.plan === Plan.Pro
-    const isPlus = user?.subscription?.plan === Plan.Plus
     return (
-        <div className="flex items-center justify-center h-screen">
-            <div>
-                <p className="text-center text-5xl font-medium">Choose the plan that scales with your usage</p>
-                <div className="mt-20 flex items-center justify-center gap-10">
-                    <Card className="w-full max-w-[350px]">
-                        <CardHeader>
-                            <CardTitle className="text-3xl font-semibold">Basic</CardTitle>
-                            <p className="mt-1 text-xl font-medium">
-                                $0 / month
-                            </p>
-                        </CardHeader>
-                        <CardContent className="mt-4">
-                            <ul className="flex flex-col gap-4">
-                                <li className="font-medium">● 10 API requests / month</li>
-                                <li className="font-medium">● Access to core features</li>
-                                <li className="font-medium">● Standard rate limiting</li>
-                                <li className="font-medium">● Community support</li>
-                                <li className="font-medium">● No overage allowed (hard limit)</li>
-                            </ul>
-                            
-                        </CardContent>
-                        <CardFooter className="items-start! mt-4 !flex-col">
-                            <p className="text-xs italic">Best for individuals & testing use cases</p>
-                            <Button onClick={() => onClickPlan(Plan.Basic)} disabled={isBasic} className="mt-4 w-full">
-                                {selectedPlan === isBasic ? <Loader2 /> : isBasic ? "Subscribed" : "Downgrade"}
-                            </Button>
-                        </CardFooter>
-                    </Card>
+        <div className="flex justify-center min-h-screen p-10">
+            <div className="w-full max-w-6xl">
+                <p className="text-center text-4xl font-medium mb-10">
+                    Choose the plan that scales with your usage
+                </p>
 
-                    <Card className="w-full max-w-[350px]">
-                        <CardHeader>
-                            <CardTitle className="text-3xl font-semibold">Pro</CardTitle>
-                            <p className="mt-1 text-xl font-medium">
-                                $12 / month
-                            </p>
-                        </CardHeader>
-                        <CardContent className="mt-4">
-                            <ul className="flex flex-col gap-4">
-                                <li className="font-medium">● 100 API requests / month</li>
-                                <li className="font-medium">● Access to core features</li>
-                                <li className="font-medium">● Standard rate limiting</li>
-                                <li className="font-medium">● Community support</li>
-                                <li className="font-medium">● Overage allowed (soft limit with warnings)</li>
-                            </ul>
-                            
-                        </CardContent>
-                        <CardFooter className="items-start! mt-4 !flex-col">
-                            <p className="text-xs italic">Best for startups & active projects</p>
-                            <Button onClick={() => onClickPlan(Plan.Pro)} disabled={isPro} className="mt-4 w-full">
-                                {selectedPlan === isPro ? <Loader2 /> : isPro ? "Subscribed" : isBasic ? "Upgrade" : "Downgrade"}
-                            </Button>
-                        </CardFooter>
-                    </Card>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    {plans.length === 0 ? (
+                        <p>No plans available</p>
+                    ) : (
+                        sortedPlans.map((plan) => (
+                            <Card key={plan._id}>
+                                <CardHeader>
+                                    <CardTitle className="text-2xl capitalize">
+                                        {plan.name}
+                                    </CardTitle>
+                                    <p className="text-xl font-medium">
+                                        ${plan.price} / month
+                                    </p>
+                                </CardHeader>
 
-                    <Card className="w-full max-w-[350px]">
-                        <CardHeader>
-                            <CardTitle className="text-3xl font-semibold">Plus</CardTitle>
-                            <p className="mt-1 text-xl font-medium">
-                                $20 / month
-                            </p>
-                        </CardHeader>
-                        <CardContent className="mt-4">
-                            <ul className="flex flex-col gap-4">
-                                <li className="font-medium">● 200 API requests / month</li>
-                                <li className="font-medium">● Access to core features</li>
-                                <li className="font-medium">● Advanced rate limiting</li>
-                                <li className="font-medium">● Community support</li>
-                                <li className="font-medium">● Overage protection + upgrade prompts</li>
-                            </ul>
-                            
-                        </CardContent>
-                        <CardFooter className="items-start! mt-4 !flex-col">
-                            <p className="text-left text-xs italic">Best for scaling apps & production workloads</p>
-                            <Button onClick={() => onClickPlan(Plan.Plus)} disabled={isPlus} className="mt-4 w-full">
-                                {selectedPlan === isPlus ? <Loader2 /> : isPlus ? "Subscribed" : "Upgrade"}
-                            </Button>
-                        </CardFooter>
-                    </Card>
+                                <CardContent>
+                                    <ul className="flex flex-col gap-2">
+                                        {plan.features?.map((f, i) => (
+                                            <li key={i}>● {f}</li>
+                                        ))}
+                                        <li>● {plan.max_usage_limit} requests/month</li>
+                                    </ul>
+                                </CardContent>
+
+                                <CardFooter>
+                                    <Button
+                                        className="w-full"
+                                        disabled={currentPlan === plan.name}
+                                        onClick={() => onClickPlan(plan)}
+                                    >
+                                        {selectedPlan === plan._id ? (
+                                            <Loader2 className="animate-spin w-4 h-4" />
+                                        ) : currentPlan === plan.name ? (
+                                            "Current Plan"
+                                        ) : (
+                                            "Choose Plan"
+                                        )}
+                                    </Button>
+                                </CardFooter>
+                            </Card>
+                        ))
+                    )}
                 </div>
             </div>
         </div>
-    )
-}
+    );
+};
 
 export default Pricing;
