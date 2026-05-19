@@ -24,10 +24,19 @@ const Pricing = () => {
 
     const user = getUser();
 
+    const token = Cookies.get("token");
+
     const fetchPlans = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/plans`);
+            const res = await fetch(
+                `${import.meta.env.VITE_API_URL}/api/plans`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
+                }
+            );
 
             const data = await res.json();
 
@@ -150,7 +159,7 @@ const Pricing = () => {
                                         {selectedPlan === plan._id ? (
                                             <Loader2 className="animate-spin w-4 h-4" />
                                         ) : currentPlan === plan.name ? (
-                                            "Current Plan"
+                                            "Subscribed"
                                         ) : (
                                             "Choose Plan"
                                         )}

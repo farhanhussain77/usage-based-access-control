@@ -6,13 +6,13 @@ import Stripe from 'stripe';
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string)
 
 export const createCheckoutSession = async (req: Request, res: Response) => {
-    const { success_url, product_id } = req.body;
+    const { success_url, plan_id } = req.body;
     try{
         if(!success_url){
             return res.status(400).json({message: "success url is required"});
         }
 
-        if(!product_id){
+        if(!plan_id){
             return res.status(400).json({message: "plan id is required"});
         }
 
@@ -25,9 +25,14 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
             return res.status(404).json({meesage: "user not found"});
         }
 
-        const newPlan = await Plans.findOne({ stripe_product_id: product_id });
+        const newPlan = await Plans.findById(plan_id);
         if (!newPlan) {
             return res.status(400).json({ message: "Plan not found" });
+        }
+        if (newPlan.type === "internal") {
+            return res.status(400).json({
+                message: "Basic plan cannot be purchased. It is assigned only at signup."
+            });
         }
 
         const subscription = await Subscriptions.findOne({user_id: user._id}).populate("plan_id");
@@ -35,8 +40,7 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
             return res.status(400).json({message: "Subscription not found"})
         }
         const currentPlan = subscription.plan_id as any;
-        const isUpgrading = currentPlan?.name === "pro" && newPlan?.name === "plus";; //currentPlan === "pro" && newPlan === "plus";
-        console.log("uppGrading fetched", isUpgrading, "dcsasa");
+        const isUpgrading = currentPlan?.name === "pro" && newPlan?.name === "plus"; //currentPlan === "pro" && newPlan === "plus";
         let session;
         if(isUpgrading){
             const stripeSubscription = await stripe.subscriptions.retrieve(subscription.stripe_subscription_id);

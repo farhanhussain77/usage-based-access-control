@@ -1,4 +1,4 @@
-import { Link, Outlet, useNavigate } from "react-router";
+import { Outlet, useNavigate, NavLink } from "react-router";
 import Cookies from "js-cookie";
 import { use } from "react";
 import { AuthContext } from "@/contexts/Auth";
@@ -32,18 +32,30 @@ const AdminLayout = () => {
                 <p className="text-2xl">MeterStack</p>
                     <h1 className="text-xl font-bold mb-6 mt-3">Admin Panel</h1>
                     <nav className="flex flex-col gap-2">
-                        <Link
+                        <NavLink
                             to="/admin/users"
-                            className="p-2 rounded hover:bg-gray-200"
+                            className={({ isActive }) =>
+                              `px-4 py-2 rounded-md ${
+                                isActive
+                                  ? "bg-black text-white font-semibold"
+                                  : "text-gray-600 hover:bg-gray-100"
+                              }`
+                            }
                         >
                             Users
-                        </Link>
-                        <Link
+                        </NavLink>
+                        <NavLink
                             to="/admin/plans"
-                            className="p-2 rounded hover:bg-gray-200"
+                            className={({ isActive }) =>
+                              `px-4 py-2 rounded-md ${
+                                isActive
+                                  ? "bg-black text-white font-semibold"
+                                  : "text-gray-600 hover:bg-gray-100"
+                              }`
+                            }
                         >
                             Plans
-                        </Link>
+                        </NavLink>
                     </nav>
                 </div>
                 <button
