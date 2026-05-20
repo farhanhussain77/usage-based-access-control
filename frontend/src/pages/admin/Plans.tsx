@@ -10,6 +10,7 @@ type Plan = {
     price: number;
     stripe_product_id: string;
     stripe_price_id: string;
+    features: string[];
     max_usage_limit: number;
 };
 
@@ -18,15 +19,72 @@ const AdminPlans = () => {
     const [loading, setLoading] = useState(false);
     const [creating, setCreating] = useState(false);
     const [showPanel, setShowPanel] = useState(false);
+    const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
 
     const [form, setForm] = useState({
         name: "",
-        price: "",
         stripe_product_id: "",
         stripe_price_id: "",
         max_usage_limit: "",
-        features: ""
+        features: [""]
     });
+
+    const handleEdit = (plan: Plan) => {
+        setForm({
+            name: plan.name,
+            stripe_product_id: plan.stripe_product_id || "",
+            stripe_price_id: plan.stripe_price_id || "",
+            max_usage_limit: String(plan.max_usage_limit),
+            features: plan.features || [""]
+        });
+    
+        setEditingPlanId(plan._id);
+        setShowPanel(true);
+    };
+
+
+    const updatePlan = async () => {
+        const res = await fetch(
+            `${import.meta.env.VITE_API_URL}/api/plans/update/${editingPlanId}`,
+            {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    ...form,
+                    max_usage_limit: Number(form.max_usage_limit),
+                    features: form.features.filter(Boolean)
+                })
+            }
+        );
+    
+        if (res.ok) {
+            await fetchPlans();
+            setShowPanel(false);
+            setEditingPlanId(null);
+            resetForm();
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        const res = await fetch(
+            `${import.meta.env.VITE_API_URL}/api/plans/delete/${id}`,
+            {
+                method: "DELETE",
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            }
+        );
+    
+        if (res.ok) {
+            await fetchPlans();
+            resetForm();
+            setEditingPlanId(null);
+        }
+    };
 
     const token = Cookies.get("token");
 
@@ -65,11 +123,10 @@ const AdminPlans = () => {
     const resetForm = () => {
         setForm({
             name: "",
-            price: "",
             stripe_product_id: "",
             stripe_price_id: "",
             max_usage_limit: "",
-            features: "",
+            features: [""],
         });
     };
 
@@ -87,10 +144,8 @@ const AdminPlans = () => {
                     },
                     body: JSON.stringify({
                         ...form,
-                        price: Number(form.price),
                         max_usage_limit: Number(form.max_usage_limit),
                         features: form.features
-                            .split("\n")
                             .map((item) => item.trim())
                             .filter(Boolean)
                     })
@@ -108,6 +163,7 @@ const AdminPlans = () => {
 
             resetForm();
             setShowPanel(false);
+            setEditingPlanId(null);
 
         } catch (err) {
             console.error("Create plan error:", err);
@@ -115,6 +171,15 @@ const AdminPlans = () => {
             setCreating(false);
         }
     };
+
+    const canAddFeature =
+        form.features.length === 0 ||
+        form.features[form.features.length - 1].trim() !== "";
+
+    const isFormValid =
+        form.name.trim() &&
+        form.max_usage_limit &&
+        form.features.every(f => f.trim().length > 0);
 
     return (
         <div className="relative p-10 overflow-hidden">
@@ -150,6 +215,7 @@ const AdminPlans = () => {
                                 <th className="text-left p-4">Usage Limit</th>
                                 <th className="text-left p-4">Stripe Product ID</th>
                                 <th className="text-left p-4">Stripe Price ID</th>
+                                <th className="text-left p-4">Actions</th>
                             </tr>
                         </thead>
 
@@ -177,6 +243,21 @@ const AdminPlans = () => {
 
                                     <td className="p-4 text-sm text-gray-600">
                                         {plan.stripe_price_id}
+                                    </td>
+                                    <td className="p-4 flex gap-2">
+                                        <Button
+                                            variant="outline"
+                                            onClick={() => handleEdit(plan)}
+                                        >
+                                            Edit
+                                        </Button>
+
+                                        <Button
+                                            variant="destructive"
+                                            onClick={() => handleDelete(plan._id)}
+                                        >
+                                            Delete
+                                        </Button>
                                     </td>
                                 </tr>
                             ))}
@@ -229,15 +310,6 @@ const AdminPlans = () => {
                     />
 
                     <input
-                        placeholder="Price"
-                        value={form.price}
-                        onChange={(e) =>
-                            setForm({ ...form, price: e.target.value })
-                        }
-                        className="border w-full p-3 rounded-md"
-                    />
-
-                    <input
                         placeholder="Stripe Product ID"
                         value={form.stripe_product_id}
                         onChange={(e) =>
@@ -273,31 +345,72 @@ const AdminPlans = () => {
                         className="border w-full p-3 rounded-md"
                     />
 
-                    <textarea
-                        placeholder={`Features (one per line)
-                        Example:
-                        10 API Requests
-                        Priority Support
-                        Analytics Dashboard`}
-                        value={form.features}
-                        onChange={(e) =>
-                            setForm({
-                                ...form,
-                                features: e.target.value
-                            })
-                        }
-                        className="border w-full p-3 rounded-md min-h-[120px]"
-                    />
+                    <div className="space-y-3">
+                        <p className="font-medium">Features</p>
+
+                        {form.features.map((feature, index) => (
+                            <div key={index} className="flex gap-2">
+                                <input
+                                    placeholder={`Feature ${index + 1}`}
+                                    value={feature}
+                                    onChange={(e) => {
+                                        const updated = [...form.features];
+                                        updated[index] = e.target.value;
+
+                                        setForm({
+                                            ...form,
+                                            features: updated
+                                        });
+                                    }}
+                                    className="border w-full p-3 rounded-md"
+                                />
+
+                                {form.features.length > 1 && (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => {
+                                            const updated = form.features.filter(
+                                                (_, i) => i !== index
+                                            );
+
+                                            setForm({
+                                                ...form,
+                                                features: updated
+                                            });
+                                        }}
+                                    >
+                                        Remove
+                                    </Button>
+                                )}
+                            </div>
+                        ))}
+
+                        <Button
+                            type="button"
+                            variant="outline"
+                            disabled={!canAddFeature}
+                            onClick={() =>
+                                setForm({
+                                    ...form,
+                                    features: [...form.features, ""]
+                                })
+                            }
+                        >
+                            Add Feature
+                        </Button>
+                    </div>
 
                     <Button
                         className="w-full mt-4"
-                        onClick={createPlan}
+                        onClick={editingPlanId ? updatePlan : createPlan}
+                        disabled={!isFormValid || creating}
                     >
                         {creating ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                            "Create Plan"
-                        )}
+                        ) : editingPlanId
+                        ? "Update Plan"
+                        : "Create Plan"}
                     </Button>
                 </div>
             </div>

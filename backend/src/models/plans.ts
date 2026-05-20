@@ -15,9 +15,9 @@ export interface IPlan {
 
   features: string[];
 
-  stripe_product_id?: string;
+  stripe_product_id?: string | null;
 
-  stripe_price_id?: string;
+  stripe_price_id?: string | null;
 
   is_active: boolean;
 }
@@ -36,7 +36,6 @@ const planSchema = new Schema<IPlan>(
       type: String,
       enum: ["internal", "stripe"],
       required: true,
-      default: "stripe"
     },
 
     price: {
