@@ -82,7 +82,11 @@ const Pricing = () => {
                 return;
             }
 
-            window.location.href = res?.session?.url;
+            if (res.session?.url) {
+                window.location.replace(res.session.url);
+            }else {
+                window.location.replace("/");
+            }
         } catch (err) {
             console.log(err);
         } finally {

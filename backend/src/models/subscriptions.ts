@@ -7,9 +7,11 @@ interface ISubscription {
     _id: Types.ObjectId;
     user_id: Types.ObjectId;
     plan_id: Types.ObjectId | IPlan; 
+    pending_plan_id?: Types.ObjectId | null;
     stripe_subscription_id: string;
+    stripe_schedule_id?: string | null;
     current_usage: number;
-    start_date: Date
+    start_date: Date;
     status: string;
 }
 
@@ -24,10 +26,20 @@ const subscriptionSchema = new Schema<ISubscription>({
         ref: Plans,
         required: true
       },
+    pending_plan_id: {
+        type: Schema.Types.ObjectId,
+        ref: "Plan",
+        default: null
+     },  
     stripe_subscription_id: {
         type: String,
         required: false
     },
+    stripe_schedule_id: {
+        type: String,
+        required: false,
+        default: null
+      },
     current_usage: {
         type: Number,
         required: true,

@@ -1,6 +1,7 @@
 import { Subscriptions } from '../models/subscriptions.ts';
 import { User } from '../models/users.ts';
 import { Plans } from '../models/plans.ts';
+import { WebhookEvent } from '../models/webhookevents.ts';
 import type { Request, Response } from 'express';
 import Stripe from 'stripe';
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string)
@@ -40,24 +41,142 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
             return res.status(400).json({message: "Subscription not found"})
         }
         const currentPlan = subscription.plan_id as any;
+        const isSamePlan = currentPlan._id.toString() === newPlan._id.toString();
         const isUpgrading = currentPlan?.name === "pro" && newPlan?.name === "plus"; //currentPlan === "pro" && newPlan === "plus";
+        const isDowngrading = currentPlan.max_usage_limit > newPlan.max_usage_limit;
+        if (isSamePlan) {
+            return res.status(400).json({
+                message: "You are already subscribed to this plan"
+            });
+        }
+
         let session;
-        if(isUpgrading){
-            const stripeSubscription = await stripe.subscriptions.retrieve(subscription.stripe_subscription_id);
-            console.log("current_period_end", (stripeSubscription as any).items);
-            if(!stripeSubscription){
-                return res.status(400).json({message: `Stripe Subscription not found with this id: ${subscription.stripe_subscription_id}`});
+        const hasStripeSubscription = !!subscription.stripe_subscription_id;
+
+        if(isUpgrading && hasStripeSubscription){
+            const stripeSubscription =
+        await stripe.subscriptions.retrieve(
+            subscription.stripe_subscription_id
+        );
+
+        if (!stripeSubscription) {
+            return res.status(400).json({
+                message: "Stripe subscription not found"
+            });
+        }
+
+        const subscriptionItem = stripeSubscription.items.data[0];
+
+        if (!subscriptionItem) {
+            return res.status(400).json({
+                message: "Subscription item not found"
+            });
+        }
+
+        await stripe.subscriptions.update(
+            subscription.stripe_subscription_id,
+            {
+                items: [
+                    {
+                        id: subscriptionItem.id,
+                        price: newPlan.stripe_price_id as string
+                    }
+                ],
+                proration_behavior: "create_prorations"
             }
-            // await stripe.subscriptions.update(subscription.stripe_subscription_id, {
-            //     items: [
-            //         {
-            //           id: (stripeSubscription.items.data[0] as any)?.id,
-            //           price: product.default_price as string,
-            //         },
-            //     ],
-            //     proration_behavior: "create_prorations"
-            // })
-        }else{
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: "Plan upgraded successfully"
+        });
+        } else if (isDowngrading && hasStripeSubscription) {
+
+
+            const stripeSubscription = await stripe.subscriptions.retrieve(
+                subscription.stripe_subscription_id
+            ) as any;
+        
+            if (!stripeSubscription) {
+                return res.status(400).json({
+                    message: "Stripe subscription not found"
+                });
+            }
+        
+
+            const subscriptionItem = stripeSubscription.items.data[0];
+        
+            if (!subscriptionItem) {
+                return res.status(400).json({
+                    message: "Subscription item not found"
+                });
+            }
+        
+
+            const periodEndTimestamp = subscriptionItem.current_period_end;
+            console.log("Subscription period ends at timestamp: ", periodEndTimestamp);
+        
+
+            let scheduleId = stripeSubscription.schedule;
+
+            let currentPhaseStart: number | null = null;
+        
+            if (!scheduleId) {
+
+                const newSchedule = await stripe.subscriptionSchedules.create({
+                    from_subscription: subscription.stripe_subscription_id,
+                });
+                scheduleId = newSchedule.id;
+                currentPhaseStart = newSchedule.current_phase?.start_date || null;
+            }else {
+                const existingSchedule = await stripe.subscriptionSchedules.retrieve(scheduleId);
+                currentPhaseStart = existingSchedule.current_phase?.start_date || null;
+            }
+            
+            await stripe.subscriptionSchedules.update(scheduleId, {
+
+                proration_behavior: "none", 
+                phases: [
+                    {
+
+                        items: [
+                            {
+                                price: currentPlan.stripe_price_id as string,
+                                quantity: 1
+                            }
+                        ],
+                        start_date: currentPhaseStart ? currentPhaseStart : undefined,
+                        end_date: periodEndTimestamp
+                    } as any,
+                    {
+
+                        items: [
+                            {
+                                price: newPlan.stripe_price_id as string,
+                                quantity: 1
+                            }
+                        ]
+                    }
+                ]
+            });
+            
+
+            await Subscriptions.findByIdAndUpdate(
+                subscription._id,
+                {
+                    pending_plan_id: newPlan._id
+                }
+            );
+        
+            return res.status(200).json({
+                success: true,
+                message: "Downgrade successfully scheduled for your next billing cycle. No immediate charges have been made."
+            });
+        }
+
+        
+
+     else{
             session = await stripe.checkout.sessions.create({
                 success_url,
                 line_items: [
@@ -106,6 +225,17 @@ export const handleWebhook = async (req: Request, res: Response) => {
             webhookSecret
         );
 
+        const eventId = event.id;
+
+        if (await WebhookEvent.findOne({ event_id: eventId })) {
+            return res.sendStatus(200);
+        }
+
+        await WebhookEvent.create({
+            event_id: eventId,
+            type: event.type
+        });
+
         // console.log("type: ", event.type);
 
         if(event.type === "checkout.session.completed"){
@@ -114,11 +244,13 @@ export const handleWebhook = async (req: Request, res: Response) => {
                 return res.status(400)
             }
         }else if(event.type === "invoice.paid"){
-            handleInvoicePaid(event);
+           await handleInvoicePaid(event);
         }else if(event.type === "customer.subscription.deleted"){
-            handleSubscriptionDeleted(event);
+           await handleSubscriptionDeleted(event);
         }else if (event.type === "invoice.payment_failed") {
             await handleInvoicePaymentFailed(event);
+        }else if (event.type === "customer.subscription.updated") {
+            await handleSubscriptionUpdated(event);
         }
 
         return res.sendStatus(200);
@@ -274,4 +406,58 @@ export const handleInvoicePaymentFailed = async (event: any) => {
         console.error("[invoice.payment_failed]: error", err);
         return false;
     }
+};
+
+
+export const handleSubscriptionUpdated = async (event: any) => {
+    console.log("executing handleSubscriptionUpdated...");
+
+    try {
+        const data = event.data.object;
+        const customerId = data.customer;
+        if(!customerId){
+            console.log("customerId id not found in checkout session");
+            return false;
+        }
+        const subscriptionId = data.subscription;
+
+        const user = await User.findOne({ stripe_customer_id: customerId });
+        if(!user){
+            console.log("User does not exist against the id");
+            return false;
+        }
+
+        const planProductId = data.items.data[0]?.plan?.product;
+        if (!planProductId) {
+            console.log("[subscription.updated]: no product id");
+            return false;
+        }
+
+        const plan = await Plans.findOne({
+            stripe_product_id: planProductId
+        });
+        if (!plan) {
+            console.log("[subscription.updated]: plan not found");
+            return false;
+        }
+
+        await Subscriptions.findOneAndUpdate(
+            { user_id: user._id },
+            {
+                plan_id: plan._id,
+                stripe_subscription_id: subscriptionId,
+                status: data.status || "active"
+            },
+            { returnDocument: "after" }
+        );
+
+
+        return true;
+
+    }catch (err) {
+            console.error("[invoice.payment_failed]: error", err);
+            return false;
+        }
+
+
 };
