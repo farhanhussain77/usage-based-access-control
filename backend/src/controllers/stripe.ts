@@ -82,7 +82,7 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
                         price: newPlan.stripe_price_id as string
                     }
                 ],
-                proration_behavior: "create_prorations"
+                proration_behavior: "always_invoice"
             }
         );
 
@@ -90,8 +90,10 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
             success: true,
             message: "Plan upgraded successfully"
         });
-        } else if (isDowngrading && hasStripeSubscription) {
 
+
+
+        } else if (isDowngrading && hasStripeSubscription) {
 
             const stripeSubscription = await stripe.subscriptions.retrieve(
                 subscription.stripe_subscription_id
@@ -103,7 +105,6 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
                 });
             }
         
-
             const subscriptionItem = stripeSubscription.items.data[0];
         
             if (!subscriptionItem) {
@@ -111,11 +112,9 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
                     message: "Subscription item not found"
                 });
             }
-        
 
             const periodEndTimestamp = subscriptionItem.current_period_end;
             console.log("Subscription period ends at timestamp: ", periodEndTimestamp);
-        
 
             let scheduleId = stripeSubscription.schedule;
 
@@ -160,7 +159,6 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
                 ]
             });
             
-
             await Subscriptions.findByIdAndUpdate(
                 subscription._id,
                 {
@@ -276,6 +274,43 @@ const handleInvoicePaid = async (event: any) => {
             console.log("User does not exist against the id");
             return false;
         }
+
+        const lineItems = data.lines?.data || [];
+        let invoiceProductId: string | null = null;
+
+        const upgradeLine = lineItems.find((line: any) => 
+            line.description && line.description.includes("Remaining time")
+        );
+
+        if (upgradeLine) {
+
+            invoiceProductId = upgradeLine.pricing?.price_details?.product || null;
+            console.log(`[Upgrade Detected] New Plan Product ID: ${invoiceProductId}`);
+        } else if (lineItems.length > 0) {
+            // Case B: This is a standard renewal invoice. Use the primary plan on the billing statement.
+            invoiceProductId = lineItems[0].pricing?.price_details?.product || null;
+            console.log(`[Standard Renewal Detected] Renewing Plan Product ID: ${invoiceProductId}`);
+        }
+
+        if (invoiceProductId) {
+            const plan = await Plans.findOne({ stripe_product_id: invoiceProductId });
+            const currentSub = await Subscriptions.findOne({ user_id: user._id });
+
+            if (plan && currentSub && String(currentSub.plan_id) !== String(plan._id)) {
+                await Subscriptions.findOneAndUpdate(
+                    { user_id: user._id },
+                    {
+                        plan_id: plan._id,
+                        stripe_subscription_id: data.subscription,
+                        current_usage: 0,
+                        status: "active"
+                    }
+                );
+                console.log(`Successfully upgraded user to plan: ${plan._id}`);
+                return true;
+            }
+        }
+
         await Subscriptions.findOneAndUpdate(
             { user_id: user._id },
             {
@@ -351,6 +386,11 @@ export const handleSubscriptionDeleted = async (event: any) => {
     console.log("executing handleSubscriptionDeleted...");
     const data = event?.object?.data;
     const customerId = data?.customer;
+    const basicPlan = await Plans.findOne({ name: "basic" });
+    if (!basicPlan) {
+        console.log("[handleSubscriptionDeleted]: basic plan not exists.");
+        return false;
+    }
 
     const user = await User.findOne({stripe_customer_id: customerId});
     if(!user){
@@ -358,7 +398,7 @@ export const handleSubscriptionDeleted = async (event: any) => {
         return false;
     }
 
-    await Subscriptions.findOneAndUpdate({user_id: user._id.toString()}, {status: 'inactive'});
+    await Subscriptions.findOneAndUpdate({user_id: user._id.toString()}, {plan_id: basicPlan._id,});
 }
 
 export const handleInvoicePaymentFailed = async (event: any) => {
@@ -419,7 +459,6 @@ export const handleSubscriptionUpdated = async (event: any) => {
             console.log("customerId id not found in checkout session");
             return false;
         }
-        const subscriptionId = data.subscription;
 
         const user = await User.findOne({ stripe_customer_id: customerId });
         if(!user){
@@ -427,29 +466,32 @@ export const handleSubscriptionUpdated = async (event: any) => {
             return false;
         }
 
-        const planProductId = data.items.data[0]?.plan?.product;
-        if (!planProductId) {
-            console.log("[subscription.updated]: no product id");
-            return false;
+        const dbSubscription = await Subscriptions.findOne({ user_id: user._id });
+        if (!dbSubscription) return false;
+
+        let updateFields: any = {
+            status: data.status || "active"
+        };
+
+
+        if (dbSubscription.pending_plan_id) {
+            const planProductId = data.items.data[0]?.price?.product;
+            const targetPlan = await Plans.findOne({ stripe_product_id: planProductId });
+
+            if (targetPlan && String(targetPlan._id) === String(dbSubscription.pending_plan_id)) {
+                updateFields.plan_id = targetPlan._id;
+                updateFields.$unset = { pending_plan_id: "" };
+                console.log("[subscription.updated]: Scheduled downgrade successfully applied.");
+            }
         }
 
-        const plan = await Plans.findOne({
-            stripe_product_id: planProductId
-        });
-        if (!plan) {
-            console.log("[subscription.updated]: plan not found");
-            return false;
-        }
-
+        // Apply the changes safely
         await Subscriptions.findOneAndUpdate(
             { user_id: user._id },
-            {
-                plan_id: plan._id,
-                stripe_subscription_id: subscriptionId,
-                status: data.status || "active"
-            },
+            updateFields,
             { returnDocument: "after" }
         );
+
 
 
         return true;

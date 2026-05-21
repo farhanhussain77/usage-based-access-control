@@ -14,9 +14,21 @@ export const getPlans = async (
       is_active: true
     }).sort({ createdAt: -1 });
 
+    let pendingPlanId: string | null = null;
+    const userId = (req as any).user?._id; 
+    
+    if (userId) {
+      const userSubscription = await Subscriptions.findOne({ user_id: userId });
+      
+      if (userSubscription && userSubscription.pending_plan_id) {
+        pendingPlanId = userSubscription.pending_plan_id.toString();
+      }
+    }
+
     return res.status(200).json({
       success: true,
-      plans
+      plans,
+      pending_plan_id: pendingPlanId
     });
   } catch (err) {
     console.error("[GET_PLANS_ERROR]: ", err);

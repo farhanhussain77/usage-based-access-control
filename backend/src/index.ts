@@ -9,6 +9,7 @@ import { authenticate } from "./middlewares/auth.ts";
 import { handleWebhook } from "./controllers/stripe.ts";
 import Stripe from 'stripe';
 import adminPlansRoutes from "./routes/adminPlans.ts";
+import adminUserRoutes from "./routes/adminUsers.ts"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
 
@@ -35,7 +36,8 @@ app.use(bodyParser.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/feature', authenticate, featureRoutes);
 app.use('/api/stripe', stripeRoutes);
-app.use("/api/plans", adminPlansRoutes);
+app.use("/api/plans", authenticate, adminPlansRoutes);
+app.use("/api/users", authenticate, adminUserRoutes)
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`)

@@ -21,6 +21,7 @@ const Pricing = () => {
     const [plans, setPlans] = useState<Plan[]>([]);
     const [loading, setLoading] = useState(false);
     const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+    const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
 
     const user = getUser();
 
@@ -42,6 +43,7 @@ const Pricing = () => {
 
             if (res.ok) {
                 setPlans(data.plans || []);
+                setPendingPlanId(data.pending_plan_id || null);
             }
         } catch (err) {
             console.log(err);
@@ -84,10 +86,10 @@ const Pricing = () => {
 
             if (res.session?.url) {
                 window.location.replace(res.session.url);
-            }else {
-                window.location.replace("/");
-            }
-        } catch (err) {
+             }else {
+                 window.location.replace("/");
+             }
+            }catch (err) {
             console.log(err);
         } finally {
             setSelectedPlan(null);
@@ -157,11 +159,13 @@ const Pricing = () => {
                                 <CardFooter>
                                     <Button
                                         className="w-full"
-                                        disabled={currentPlan === plan.name}
+                                        disabled={currentPlan === plan.name || pendingPlanId === plan._id}
                                         onClick={() => onClickPlan(plan)}
                                     >
                                         {selectedPlan === plan._id ? (
                                             <Loader2 className="animate-spin w-4 h-4" />
+                                        ) : pendingPlanId === plan._id ? (
+                                            "Downgrade Scheduled"
                                         ) : currentPlan === plan.name ? (
                                             "Subscribed"
                                         ) : (

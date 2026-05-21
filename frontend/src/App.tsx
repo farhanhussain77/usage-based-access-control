@@ -7,8 +7,9 @@ import MainLayout from './components/layouts/MainLayout';
 import AdminLayout from './components/admin/AdminLayout';
 import AuthProvider from './contexts/Auth';
 import AdminPlans from "./pages/admin/Plans";
+import Users from "./pages/admin/Users"
 
-const Users = () => <div>Users Page</div>;
+// const Users = () => <div>Users Page</div>;
 
 
 function App() {
