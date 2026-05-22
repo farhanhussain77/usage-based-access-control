@@ -14,5 +14,6 @@ export interface IUser {
     subscription: {
         plan: string;
         limit_exceeded: boolean;
+        status: string;
     }
 }

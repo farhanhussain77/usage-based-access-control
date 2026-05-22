@@ -34,10 +34,16 @@ const createUser = async (req: Request, res: Response) => {
             });
         }
 
+        const startDate = new Date();
+
+        const endDate = new Date(startDate);
+        endDate.setMonth(endDate.getMonth() + 1);
+
         await Subscriptions.create({
             user_id: user._id,
             plan_id: basicPlan._id,
-            start_date: new Date(),
+            start_date: startDate,
+            end_date: endDate,
             current_usage: 0,
             status: "active"
          });
@@ -110,10 +116,26 @@ export const getCurrentUser = async (req: Request, res: Response) => {
     const userPayload = {
         name: user.name, 
         email: user.email,
-        subscription: {
-            plan: plan.name,
-            limit_exceeded: usage >= plan?.max_usage_limit
-        }
+        role: user.role,
+        subscription: subscription
+            ? {
+                  plan: plan?.name,
+                  status: subscription.status,
+                  current_usage: usage,
+                  max_usage_limit:
+                      plan?.max_usage_limit,
+
+                  limit_exceeded:
+                      usage >=
+                      plan?.max_usage_limit
+              }
+            : {
+                  plan: "none",
+                  status: "inactive",
+                  current_usage: 0,
+                  max_usage_limit: 0,
+                  limit_exceeded: false
+              }
     }
 
     return res.status(200).json({user: userPayload, success: true});

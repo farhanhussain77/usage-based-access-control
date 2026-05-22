@@ -6,6 +6,7 @@ type User = {
     name: string;
     email: string;
     role: "customer" | "admin" | "superadmin";
+    status: "active" | "inactive";
     subscription: {
         plan: string;
         status: string;
@@ -23,6 +24,13 @@ const Users = () => {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const token = Cookies.get("token");
+    const [showCreateAdmin, setShowCreateAdmin] = useState(false);
+
+    const [adminForm, setAdminForm] = useState({
+        email: "",
+        password: "",
+        confirmPassword: ""
+    });
 
     const fetchUsers = async () => {
         setLoading(true);
@@ -49,29 +57,124 @@ const Users = () => {
         fetchUsers();
     }, []);
 
-    const updateRole = async (userId: string, role: string) => {
+    const deleteUser = async (userId: string) => {
+        const confirmed = window.confirm(
+            "Delete this user permanently?"
+        );
+
+        if (!confirmed) return;
+
         const res = await fetch(
-            `${import.meta.env.VITE_API_URL}/api/users/${userId}/role`,
+            `${import.meta.env.VITE_API_URL}/api/users/${userId}/delete`,
             {
-                method: "PATCH",
+                method: "DELETE",
                 headers: {
-                    "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify({ role })
+                }
             }
         );
 
         if (res.ok) {
-            fetchUsers(); // refresh list
+            fetchUsers();
         }
+    };
+
+
+    const disableUser = async (userId: string) => {
+        const res = await fetch(
+            `${import.meta.env.VITE_API_URL}/api/users/${userId}/disable`,
+            {
+                method: "PATCH",
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            }
+        );
+
+        if (res.ok) {
+            fetchUsers();
+        }
+    };
+
+    const createAdmin = async () => {
+        if (
+            adminForm.password !==
+            adminForm.confirmPassword
+        ) {
+            alert("Passwords do not match");
+            return;
+        }
+
+        const res = await fetch(
+            `${import.meta.env.VITE_API_URL}/api/users/create-admin`,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    email: adminForm.email,
+                    password: adminForm.password
+                })
+            }
+        );
+
+        if (res.ok) {
+            setShowCreateAdmin(false);
+
+            setAdminForm({
+                email: "",
+                password: "",
+                confirmPassword: ""
+            });
+
+            fetchUsers();
+        }
+    };
+
+    useEffect(() => {
+        const handleEsc = (e: KeyboardEvent) => {
+            if (e.key === "Escape") {
+                setShowCreateAdmin(false);
+            }
+        };
+    
+        window.addEventListener("keydown", handleEsc);
+        return () => window.removeEventListener("keydown", handleEsc);
+    }, []);
+
+
+    const resetAdminForm = () => {
+        setAdminForm({
+            email: "",
+            password: "",
+            confirmPassword: ""
+        });
+    };
+
+
+    const closeCreateAdmin = () => {
+        setShowCreateAdmin(false);
+        resetAdminForm();
     };
 
     if (loading) return <p>Loading...</p>;
 
     return (
         <div>
-            <h1 className="text-2xl font-bold mb-6">Users Management</h1>
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-2xl font-bold">
+                    Users Management
+                </h1>
+
+                <button
+                    onClick={() => setShowCreateAdmin(true)}
+                    className="bg-black text-white px-4 py-2 rounded"
+                >
+                    Create Admin
+                </button>
+            </div>
 
             <div className="overflow-x-auto border rounded-lg">
                 <table className="w-full text-sm">
@@ -83,6 +186,7 @@ const Users = () => {
                             <th className="p-3">Status</th>
                             <th className="p-3">Usage</th>
                             <th className="p-3">Limit</th>
+                            <th className="p-3">Actions</th>
                         </tr>
                     </thead>
 
@@ -101,17 +205,7 @@ const Users = () => {
                                     </td>
 
                                     <td className="p-3">
-                                        <select
-                                            value={user.role}
-                                            disabled={user.role === "superadmin"}
-                                            onChange={(e) =>
-                                                updateRole(user._id, e.target.value)
-                                            }
-                                            className="border p-1 rounded"
-                                        >
-                                            <option value="customer">customer</option>
-                                            <option value="admin">admin</option>
-                                        </select>
+                                        {user.role}
                                     </td>
 
                                     <td className="p-3 capitalize">
@@ -139,12 +233,91 @@ const Users = () => {
                                         {user.subscription.max_usage_limit}
                                     </td>
 
+                                    <td className="p-3 flex gap-2">
+                                        <button
+                                            onClick={() => disableUser(user._id)}
+                                            className="bg-yellow-500 text-white px-3 py-1 rounded text-xs"
+                                        >
+                                            Disable
+                                        </button>
+
+                                        <button
+                                            onClick={() => deleteUser(user._id)}
+                                            className="bg-red-500 text-white px-3 py-1 rounded text-xs"
+                                        >
+                                            Delete
+                                        </button>
+                                    </td>
+
                                 </tr>
                             );
                         })}
                     </tbody>
                 </table>
             </div>
+
+            {showCreateAdmin && (
+    <div
+    className="fixed inset-0 bg-black/40 flex items-center justify-center"
+    onClick={() => setShowCreateAdmin(false)}
+>
+    <div
+        className="bg-white p-6 rounded-lg w-[400px]"
+        onClick={(e) => e.stopPropagation()}
+    >
+            <h2 className="text-xl font-bold mb-4">
+                Create Admin
+            </h2>
+
+            <div className="space-y-3">
+                <input
+                    placeholder="Email"
+                    value={adminForm.email}
+                    onChange={(e) =>
+                        setAdminForm({
+                            ...adminForm,
+                            email: e.target.value
+                        })
+                    }
+                    className="border w-full p-2 rounded"
+                />
+
+                <input
+                    type="password"
+                    placeholder="Password"
+                    value={adminForm.password}
+                    onChange={(e) =>
+                        setAdminForm({
+                            ...adminForm,
+                            password: e.target.value
+                        })
+                    }
+                    className="border w-full p-2 rounded"
+                />
+
+                <input
+                    type="password"
+                    placeholder="Confirm Password"
+                    value={adminForm.confirmPassword}
+                    onChange={(e) =>
+                        setAdminForm({
+                            ...adminForm,
+                            confirmPassword: e.target.value
+                        })
+                    }
+                    className="border w-full p-2 rounded"
+                />
+
+                <button
+                    onClick={createAdmin}
+                    className="bg-black text-white w-full py-2 rounded"
+                >
+                    Create
+                </button>
+            </div>
+        </div>
+    </div>
+)}
         </div>
     );
 };

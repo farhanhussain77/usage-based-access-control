@@ -12,6 +12,7 @@ interface ISubscription {
     stripe_schedule_id?: string | null;
     current_usage: number;
     start_date: Date;
+    end_date: Date;
     status: string;
 }
 
@@ -48,7 +49,10 @@ const subscriptionSchema = new Schema<ISubscription>({
     start_date: {
         type: Date,
         required: true,
-        default: Date.now,
+    },
+    end_date: {
+        type: Date,
+        required: false,
     },
     status: {
         type: String,

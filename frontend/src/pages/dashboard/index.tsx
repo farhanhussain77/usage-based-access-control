@@ -57,17 +57,22 @@ const Dashboard = () => {
                 Track API consumption in real time and ensure users stay within their allocated quotas
             </p>
 
-            <Button className="mt-6 w-1/6" onClick={callApi}>
+            <Button className="mt-6 w-1/6" onClick={callApi} disabled={user?.subscription?.status === "inactive"}>
                 {loading ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                 ):(
                     <span>Call API</span>
                 )}
             </Button>
-            {(user?.subscription?.limit_exceeded || limitExceeded) && (
+            {(user?.subscription?.limit_exceeded || limitExceeded ) && (
                 <div className="mt-5">
                     <span className="text-xs text-red-600">Your API usage limit exceeded. Please consider to </span>
                     <Link className="text-xs underline font-semibold" to="/pricing">Upgrade</Link>
+                </div>
+            )}
+            {user?.subscription?.status === "inactive"  && (
+                <div className="mt-5">
+                    <span className="text-xs text-red-600">Your are inactive. </span>
                 </div>
             )}
         </div>

@@ -350,6 +350,12 @@ const handleCheckoutSessionCompleted = async (event: any) => {
 
         const stripeSub = await stripe.subscriptions.retrieve(subscriptionId);
 
+        const primaryItem = stripeSub.items.data[0];
+        if (!primaryItem) {
+            console.log("No items found inside the subscription");
+            return false;
+        }
+
         const productId = stripeSub.items.data[0]?.plan?.product as string;
 
         const plan = await Plans.findOne({
@@ -357,6 +363,9 @@ const handleCheckoutSessionCompleted = async (event: any) => {
         });
 
         if (!plan) return false;
+
+        const subscriptionStartDate = new Date(primaryItem.current_period_start * 1000);
+        const subscriptionEndDate = new Date(primaryItem.current_period_end * 1000);
 
         await Promise.all([
             User.findByIdAndUpdate(userId, {
@@ -368,7 +377,8 @@ const handleCheckoutSessionCompleted = async (event: any) => {
                 {
                     plan_id: plan._id,
                     stripe_subscription_id: subscriptionId,
-                    start_date: new Date(stripeSub.start_date),
+                    start_date: subscriptionStartDate,
+                    end_date: subscriptionEndDate,
                     status: "active"
                 },
                 { upsert: true }
