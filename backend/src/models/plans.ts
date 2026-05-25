@@ -7,6 +7,8 @@ export interface IPlan {
 
   type: "internal" | "stripe";
 
+  plan_type: "individual" | "team";
+
   price: number;
 
   currency: string;
@@ -37,6 +39,12 @@ const planSchema = new Schema<IPlan>(
       enum: ["internal", "stripe"],
       required: true,
     },
+
+    plan_type: {
+      type: String,
+      enum: ["individual", "team"],
+      default: "individual"
+  },
 
     price: {
       type: Number,

@@ -2,16 +2,16 @@ import { Router } from "express";
 const router = Router();
 
 import { createPlan, deletePlan, updatePlan, getPlans } from "../controllers/adminPlans.ts";
-import { authenticate } from "../middlewares/auth.ts";
+
 import { authorizeRoles } from "../middlewares/authorizeRoles.ts";
 
 
-router.get( "/", authenticate, getPlans );
+router.get( "/", getPlans );
 
-router.post( "/create", authenticate, createPlan );
+router.post( "/create", createPlan );
 
-router.put("/update/:planId", authenticate, updatePlan);
-router.delete("/delete/:planId", authenticate, deletePlan);
+router.put("/update/:planId", authorizeRoles("admin"), updatePlan);
+router.delete("/delete/:planId", authorizeRoles("admin"), deletePlan);
 
 
 export default router;

@@ -11,8 +11,10 @@ export interface IUser {
     _id: string;
     email: string;
     name?: string;
+    role: string;
     subscription: {
         plan: string;
         limit_exceeded: boolean;
+        status: string;
     }
 }

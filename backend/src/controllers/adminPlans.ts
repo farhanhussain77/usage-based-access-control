@@ -14,9 +14,21 @@ export const getPlans = async (
       is_active: true
     }).sort({ createdAt: -1 });
 
+    let pendingPlanId: string | null = null;
+    const userId = (req as any).user?._id; 
+    
+    if (userId) {
+      const userSubscription = await Subscriptions.findOne({ user_id: userId });
+      
+      if (userSubscription && userSubscription.pending_plan_id) {
+        pendingPlanId = userSubscription.pending_plan_id.toString();
+      }
+    }
+
     return res.status(200).json({
       success: true,
-      plans
+      plans,
+      pending_plan_id: pendingPlanId
     });
   } catch (err) {
     console.error("[GET_PLANS_ERROR]: ", err);
@@ -36,11 +48,13 @@ export const createPlan = async (
   try {
     const {
       name,
+      plan_type,
       max_usage_limit,
       features,
       stripe_product_id,
       stripe_price_id
     } = req.body;
+
 
 
     if (!name) {
@@ -63,6 +77,16 @@ export const createPlan = async (
         message: "Features must be an array"
       });
     }
+
+    if (plan_type === "team") {
+      if (!stripe_product_id || !stripe_price_id) {
+          return res.status(400).json({
+              success: false,
+              message:
+                  "Team plans must include stripe_product_id and stripe_price_id"
+          });
+      }
+  }
 
     const existingPlan = await Plans.findOne({
       name: name.toLowerCase()
@@ -88,7 +112,7 @@ export const createPlan = async (
       });
     }
 
-    const isStripePlan = hasFullStripeData;
+    const isStripePlan = plan_type === "team" || hasFullStripeData;
     const isInternalPlan = !isStripePlan;
 
 
@@ -100,6 +124,7 @@ export const createPlan = async (
       const plan = await Plans.create({
         name: name.toLowerCase(),
         type: "internal",
+        plan_type: plan_type.toLowerCase(),
         price: 0,
         currency: "usd",
         max_usage_limit: Number(max_usage_limit),
@@ -125,6 +150,7 @@ export const createPlan = async (
     const plan = await Plans.create({
       name: name.toLowerCase(),
       type: "stripe",
+      plan_type: plan_type.toLowerCase(),
       price: stripePrice.unit_amount ?? 0,
       currency: stripePrice.currency || "usd",
       max_usage_limit: Number(max_usage_limit),
@@ -156,6 +182,7 @@ export const updatePlan = async (req: Request, res: Response) => {
 
     const {
       name,
+      plan_type,
       max_usage_limit,
       features,
       stripe_product_id,
@@ -178,6 +205,16 @@ export const updatePlan = async (req: Request, res: Response) => {
         message: "Basic plan name cannot be changed"
       });
     }
+
+    if (plan_type === "team") {
+      if (!stripe_product_id || !stripe_price_id) {
+          return res.status(400).json({
+              success: false,
+              message:
+                  "Team plans must include stripe_product_id and stripe_price_id"
+          });
+      }
+  }
 
     const cleanedFeatures = Array.isArray(features)
       ? features.map((f: string) => f.trim()).filter(Boolean)
@@ -216,6 +253,7 @@ export const updatePlan = async (req: Request, res: Response) => {
       planId,
       {
         name: name?.toLowerCase() || plan.name,
+        plan_type: plan_type.toLowerCase(),
         max_usage_limit:
           max_usage_limit !== undefined
             ? Number(max_usage_limit)

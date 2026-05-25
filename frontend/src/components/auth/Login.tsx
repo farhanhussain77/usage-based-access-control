@@ -38,7 +38,7 @@ const Login = ({onChangeMode}: IProps) => {
     const onSubmit = async (e: SubmitEvent) => {
         e.preventDefault();
 
-        const resonse = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/login`, {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/login`, {
             method: 'POST',
             headers: {
                 'content-type': 'application/json'
@@ -49,15 +49,27 @@ const Login = ({onChangeMode}: IProps) => {
             })
         });
 
-        if(!resonse.ok){
-            const error = await resonse.json();
-            console.log("error", error.message);
-        }
+        const result = await response.json();
 
-        const result = await resonse.json();
+    if (!response.ok) {
+        console.log("error", result.message);
+        return;
+    }
+
         Cookies.set('token', result.token);
 
-        navigate("/");
+        const role = result.user.role;
+        const subscription = result.user.subscription;
+        console.log("subscription =", subscription);
+
+        if ( role === "superadmin") {
+            navigate("/admin/users");
+        } else if(role === "admin"){
+            navigate("/pricing");
+        }else {
+            navigate("/");
+        }
+
     }
 
     return (

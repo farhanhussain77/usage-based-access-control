@@ -16,11 +16,13 @@ type Plan = {
 };
 
 const Pricing = () => {
-    const {getUser} = use(AuthContext);
+    const { getUser } = use(AuthContext);
 
     const [plans, setPlans] = useState<Plan[]>([]);
     const [loading, setLoading] = useState(false);
     const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+    const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState<"individual" | "team">("individual");
 
     const user = getUser();
 
@@ -42,6 +44,7 @@ const Pricing = () => {
 
             if (res.ok) {
                 setPlans(data.plans || []);
+                setPendingPlanId(data.pending_plan_id || null);
             }
         } catch (err) {
             console.log(err);
@@ -70,7 +73,8 @@ const Pricing = () => {
                     },
                     body: JSON.stringify({
                         plan_id: plan._id,
-                        success_url: "http://localhost:5173"
+                        success_url:
+                            user?.role === "admin" ? "http://localhost:5173/adminteam" : "http://localhost:5173"
                     })
                 }
             );
@@ -82,7 +86,11 @@ const Pricing = () => {
                 return;
             }
 
-            window.location.href = res?.session?.url;
+            if (res.session?.url) {
+                window.location.replace(res.session.url);
+            } else {
+                window.location.replace("/");
+            }
         } catch (err) {
             console.log(err);
         } finally {
@@ -100,7 +108,9 @@ const Pricing = () => {
         );
     }
 
-    const sortedPlans = [...plans].sort((a, b) => a.price - b.price);
+    const filteredPlans = plans
+        .filter((plan: any) => plan.plan_type === activeTab)
+        .sort((a, b) => a.price - b.price);
 
     // const downgrade = async () => {
     //     const token = Cookies.get("token");
@@ -126,11 +136,35 @@ const Pricing = () => {
                     Choose the plan that scales with your usage
                 </p>
 
+                <div className="flex justify-center mb-8">
+                    <div className="flex gap-2 bg-gray-100 p-1 rounded-lg">
+                        <button
+                            onClick={() => setActiveTab("individual")}
+                            className={`px-4 py-2 rounded-md text-sm font-medium ${activeTab === "individual"
+                                    ? "bg-white shadow"
+                                    : "text-gray-600"
+                                }`}
+                        >
+                            Individual
+                        </button>
+
+                        <button
+                            onClick={() => setActiveTab("team")}
+                            className={`px-4 py-2 rounded-md text-sm font-medium ${activeTab === "team"
+                                    ? "bg-white shadow"
+                                    : "text-gray-600"
+                                }`}
+                        >
+                            Team
+                        </button>
+                    </div>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    {plans.length === 0 ? (
-                        <p>No plans available</p>
+                    {filteredPlans.length === 0 ? (
+                        <p>No {activeTab} plans available</p>
                     ) : (
-                        sortedPlans.map((plan) => (
+                        filteredPlans.map((plan) => (
                             <Card key={plan._id}>
                                 <CardHeader>
                                     <CardTitle className="text-2xl capitalize">
@@ -153,11 +187,13 @@ const Pricing = () => {
                                 <CardFooter>
                                     <Button
                                         className="w-full"
-                                        disabled={currentPlan === plan.name}
+                                        disabled={currentPlan === plan.name || pendingPlanId === plan._id}
                                         onClick={() => onClickPlan(plan)}
                                     >
                                         {selectedPlan === plan._id ? (
                                             <Loader2 className="animate-spin w-4 h-4" />
+                                        ) : pendingPlanId === plan._id ? (
+                                            "Downgrade Scheduled"
                                         ) : currentPlan === plan.name ? (
                                             "Subscribed"
                                         ) : (
