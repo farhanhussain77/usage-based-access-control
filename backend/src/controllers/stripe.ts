@@ -2,7 +2,9 @@ import { Subscriptions } from '../models/subscriptions.ts';
 import { User } from '../models/users.ts';
 import { Plans } from '../models/plans.ts';
 import { WebhookEvent } from '../models/webhookevents.ts';
+import { Team } from '../models/team.ts';
 import type { Request, Response } from 'express';
+import { Types } from "mongoose";
 import Stripe from 'stripe';
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string)
 
@@ -36,11 +38,39 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
             });
         }
 
-        const subscription = await Subscriptions.findOne({user_id: user._id}).populate("plan_id");
-        if(!subscription){
-            return res.status(400).json({message: "Subscription not found"})
+        const isAdmin = user.role === "admin" ;     
+
+        let session;
+        let subscription = await Subscriptions.findOne({user_id: user._id}).populate("plan_id");
+
+        const hasSubscription = !!subscription;
+
+        if (!hasSubscription && isAdmin) {
+            session = await stripe.checkout.sessions.create({
+                success_url,
+                mode: "subscription",
+                line_items: [
+                    {
+                        price: newPlan.stripe_price_id as string,
+                        quantity: 1
+                    }
+                ],
+                metadata: {
+                    user_id: user._id.toString(),
+                    plan_id: newPlan._id.toString()
+                },
+                ...(user.stripe_customer_id && {
+                    customer: user.stripe_customer_id
+                }),
+                ...(!user.stripe_customer_id && {
+                    customer_email: user.email
+                })
+            });
+
+            return res.status(201).json({ success: true, session });
         }
-        const currentPlan = subscription.plan_id as any;
+        
+        const currentPlan = subscription?.plan_id as any;
         const isSamePlan = currentPlan._id.toString() === newPlan._id.toString();
         const isUpgrading = currentPlan?.name === "pro" && newPlan?.name === "plus"; //currentPlan === "pro" && newPlan === "plus";
         const isDowngrading = currentPlan.max_usage_limit > newPlan.max_usage_limit;
@@ -50,14 +80,12 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
             });
         }
 
-        let session;
-        const hasStripeSubscription = !!subscription.stripe_subscription_id;
+
+        const hasStripeSubscription = !!subscription?.stripe_subscription_id;
 
         if(isUpgrading && hasStripeSubscription){
-            const stripeSubscription =
-        await stripe.subscriptions.retrieve(
-            subscription.stripe_subscription_id
-        );
+
+            const stripeSubscription = await stripe.subscriptions.retrieve(subscription.stripe_subscription_id);
 
         if (!stripeSubscription) {
             return res.status(400).json({
@@ -269,11 +297,28 @@ const handleInvoicePaid = async (event: any) => {
             return false;
         }
 
+        const subscriptionId = data.subscription;
+        if(!subscriptionId){
+            console.log("subscriptionId not found in invoice");
+            return false;
+        }
+
         const user = await User.findOne({ stripe_customer_id: customerId });
         if(!user){
             console.log("User does not exist against the id");
             return false;
         }
+
+        const stripeSub = await stripe.subscriptions.retrieve(subscriptionId);
+
+        const primaryItem = stripeSub.items.data[0];
+        if (!primaryItem) {
+            console.log("No items found inside the subscription");
+            return false;
+        }
+
+        const subscriptionStartDate = new Date(primaryItem.current_period_start * 1000);
+        const subscriptionEndDate = new Date(primaryItem.current_period_end * 1000);
 
         const lineItems = data.lines?.data || [];
         let invoiceProductId: string | null = null;
@@ -303,7 +348,9 @@ const handleInvoicePaid = async (event: any) => {
                         plan_id: plan._id,
                         stripe_subscription_id: data.subscription,
                         current_usage: 0,
-                        status: "active"
+                        status: "active",
+                        start_date: subscriptionStartDate,
+                        end_date: subscriptionEndDate
                     }
                 );
                 console.log(`Successfully upgraded user to plan: ${plan._id}`);
@@ -315,7 +362,9 @@ const handleInvoicePaid = async (event: any) => {
             { user_id: user._id },
             {
                 current_usage: 0,
-                status: "active"
+                status: "active",
+                start_date: subscriptionStartDate,
+                end_date: subscriptionEndDate
             }
         );
 
@@ -335,6 +384,12 @@ const handleCheckoutSessionCompleted = async (event: any) => {
         const userId = obj.metadata?.user_id;
         if(!userId){
             console.log("user id not found in checkout session");
+            return false;
+        }
+        
+        const planId = obj.metadata?.plan_id;
+        if(!planId){
+            console.log("plan id not found in checkout session");
             return false;
         }
         const customerId = obj.customer;
@@ -359,10 +414,22 @@ const handleCheckoutSessionCompleted = async (event: any) => {
         const productId = stripeSub.items.data[0]?.plan?.product as string;
 
         const plan = await Plans.findOne({
-            stripe_product_id: productId as string
+            stripe_product_id: productId
         });
 
         if (!plan) return false;
+
+
+        const user = await User.findById(userId);
+
+if (!user) {
+    console.log("user not found");
+    return false;
+}
+
+const email = user.email ?? "";
+
+const teamName = email.split("@")[0] || "team";
 
         const subscriptionStartDate = new Date(primaryItem.current_period_start * 1000);
         const subscriptionEndDate = new Date(primaryItem.current_period_end * 1000);
@@ -384,6 +451,26 @@ const handleCheckoutSessionCompleted = async (event: any) => {
                 { upsert: true }
             )
         ]);
+
+        if (plan.plan_type === "team") {
+
+            let team = await Team.findOne({ owner_id: userId });
+
+            // create team if not exists
+            if (!team) {
+                team = await Team.create({
+                    name: teamName,
+                    owner_id: userId,
+                    members: [userId],
+                    status: "active"
+                });
+            }
+
+            // attach user to team
+            await User.findByIdAndUpdate(userId, {
+                team_id: team._id
+            });
+        }
 
         return true;
     } catch (err) {

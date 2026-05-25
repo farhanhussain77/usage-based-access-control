@@ -12,6 +12,7 @@ type Plan = {
     stripe_price_id: string;
     features: string[];
     max_usage_limit: number;
+    plan_type: "individual" | "team";
 };
 
 const AdminPlans = () => {
@@ -23,6 +24,7 @@ const AdminPlans = () => {
 
     const [form, setForm] = useState({
         name: "",
+        plan_type: "individual",
         stripe_product_id: "",
         stripe_price_id: "",
         max_usage_limit: "",
@@ -32,12 +34,13 @@ const AdminPlans = () => {
     const handleEdit = (plan: Plan) => {
         setForm({
             name: plan.name,
+            plan_type: plan.plan_type || "individual",
             stripe_product_id: plan.stripe_product_id || "",
             stripe_price_id: plan.stripe_price_id || "",
             max_usage_limit: String(plan.max_usage_limit),
             features: plan.features || [""]
         });
-    
+
         setEditingPlanId(plan._id);
         setShowPanel(true);
     };
@@ -59,7 +62,7 @@ const AdminPlans = () => {
                 })
             }
         );
-    
+
         if (res.ok) {
             await fetchPlans();
             setShowPanel(false);
@@ -78,7 +81,7 @@ const AdminPlans = () => {
                 }
             }
         );
-    
+
         if (res.ok) {
             await fetchPlans();
             resetForm();
@@ -123,6 +126,7 @@ const AdminPlans = () => {
     const resetForm = () => {
         setForm({
             name: "",
+            plan_type: "individual",
             stripe_product_id: "",
             stripe_price_id: "",
             max_usage_limit: "",
@@ -211,6 +215,7 @@ const AdminPlans = () => {
                         <thead className="bg-gray-100">
                             <tr>
                                 <th className="text-left p-4">Name</th>
+                                <th className="text-left p-4">Type</th>
                                 <th className="text-left p-4">Price</th>
                                 <th className="text-left p-4">Usage Limit</th>
                                 <th className="text-left p-4">Stripe Product ID</th>
@@ -227,6 +232,10 @@ const AdminPlans = () => {
                                 >
                                     <td className="p-4 capitalize font-medium">
                                         {plan.name}
+                                    </td>
+
+                                    <td className="p-4 capitalize">
+                                        {plan.plan_type}
                                     </td>
 
                                     <td className="p-4">
@@ -308,6 +317,27 @@ const AdminPlans = () => {
                         }
                         className="border w-full p-3 rounded-md"
                     />
+
+                    <select
+                        value={form.plan_type}
+                        onChange={(e) =>
+                            setForm({
+                                ...form,
+                                plan_type: e.target.value as
+                                    | "individual"
+                                    | "team"
+                            })
+                        }
+                        className="border w-full p-3 rounded-md"
+                    >
+                        <option value="individual">
+                            Individual
+                        </option>
+
+                        <option value="team">
+                            Team
+                        </option>
+                    </select>
 
                     <input
                         placeholder="Stripe Product ID"
@@ -409,8 +439,8 @@ const AdminPlans = () => {
                         {creating ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
                         ) : editingPlanId
-                        ? "Update Plan"
-                        : "Create Plan"}
+                            ? "Update Plan"
+                            : "Create Plan"}
                     </Button>
                 </div>
             </div>

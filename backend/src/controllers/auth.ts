@@ -79,13 +79,18 @@ const login = async (req: Request, res: Response) => {
         const usage = subscription?.current_usage ?? 0;
 
         const userPayload = {
-            name: user.name, 
+            name: user.name,
             email: user.email,
-            subscription: {
-                plan: plan.name,
-                limit_exceeded: usage >= plan?.max_usage_limit
-            }
-        }
+            role: user.role,
+
+            subscription: subscription
+                ? {
+                      plan: plan?.name,
+                      limit_exceeded:
+                          usage >= plan?.max_usage_limit
+                  }
+                : null
+        };
 
 
         const token = jwt.sign({user: userPayload}, process.env.JWT_SECRET as string, {

@@ -1,4 +1,4 @@
-import { Schema, model } from 'mongoose';
+import { Schema, model, type ObjectId } from 'mongoose';
 
 export type UserRole = "customer" | "admin" | "superadmin";
 
@@ -9,6 +9,7 @@ export interface IUser {
   password: string;
   stripe_customer_id?: string;
   role: UserRole;
+  team_id?: ObjectId | null
 }
 
 const userSchema = new Schema<IUser>({
@@ -26,7 +27,12 @@ const userSchema = new Schema<IUser>({
     type: String,
     enum: ["customer", "admin", "superadmin"],
     default: "customer"
-  }
+  },
+  team_id: {
+    type: Schema.Types.ObjectId,
+    ref: "Team",
+    default: null
+}
 });
 
 

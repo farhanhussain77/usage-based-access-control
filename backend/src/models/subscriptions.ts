@@ -1,4 +1,4 @@
-import { Schema, model, Types } from 'mongoose';
+import { Schema, model, Types, type ObjectId } from 'mongoose';
 import { User } from './users.ts';
 import { Plans } from './plans.ts';
 import type { IPlan } from './plans.ts'; 

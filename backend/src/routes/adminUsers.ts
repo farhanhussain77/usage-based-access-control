@@ -3,7 +3,7 @@ const router = Router();
 
 import { createAdmin, deleteUser, disableUser, getAllUsers, updateUserRole,  } from "../controllers/adminUsers.ts";
 
-import { authorizeRoles } from "../middlewares/authorizeRoles.ts";
+
 
 
 router.get("/", getAllUsers);

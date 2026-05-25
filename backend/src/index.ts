@@ -3,6 +3,7 @@ import connectToDB from "./db/connection.ts";
 import authRoutes from './routes/auth.ts';
 import featureRoutes from './routes/features.ts';
 import stripeRoutes from './routes/stripe.ts';
+import adminTeams from './routes/adminTeams.ts'
 import cors from 'cors';
 import bodyParser from 'body-parser';
 import { authenticate } from "./middlewares/auth.ts";
@@ -39,6 +40,7 @@ app.use('/api/feature', authenticate, featureRoutes);
 app.use('/api/stripe', stripeRoutes);
 app.use("/api/plans", authenticate, adminPlansRoutes);
 app.use("/api/users", authenticate, authorizeRoles("admin"), adminUserRoutes)
+app.use("/api/team/admin", authenticate, adminTeams)
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`)

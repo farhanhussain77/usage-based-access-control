@@ -7,9 +7,10 @@ import MainLayout from './components/layouts/MainLayout';
 import AdminLayout from './components/admin/AdminLayout';
 import AuthProvider from './contexts/Auth';
 import AdminPlans from "./pages/admin/Plans";
+import AdminTeamDashboard from './pages/team';
 import Users from "./pages/admin/Users"
 
-// const Users = () => <div>Users Page</div>;
+//  const Teams = () => <div>Teams Page</div>;
 
 
 function App() {
@@ -26,6 +27,7 @@ function App() {
             <Route path="users" element={<Users />} />
             <Route path="plans" element={<AdminPlans />} />
           </Route>
+          <Route path="/adminteam" element={<AdminTeamDashboard />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
