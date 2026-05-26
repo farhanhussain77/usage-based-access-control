@@ -8,7 +8,8 @@ import AdminLayout from './components/admin/AdminLayout';
 import AuthProvider from './contexts/Auth';
 import AdminPlans from "./pages/admin/Plans";
 import AdminTeamDashboard from './pages/team';
-import Users from "./pages/admin/Users"
+import Users from "./pages/admin/Users";
+import TeamInvitePage from './pages/teamInvite';
 
 //  const Teams = () => <div>Teams Page</div>;
 
@@ -28,6 +29,7 @@ function App() {
             <Route path="plans" element={<AdminPlans />} />
           </Route>
           <Route path="/adminteam" element={<AdminTeamDashboard />} />
+          <Route path="/team-invite/:token" element={<TeamInvitePage />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

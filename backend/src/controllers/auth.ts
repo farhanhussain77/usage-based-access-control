@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import { Subscriptions } from "../models/subscriptions.ts";
 import type { IPlan } from "../models/plans.ts";
 import { Plans } from "../models/plans.ts";
+import { getUserSubscription } from "../lib/getUserSubscription.ts";
 
 const createUser = async (req: Request, res: Response) => {
     console.log("createUser", req.body);
@@ -73,7 +74,10 @@ const login = async (req: Request, res: Response) => {
             return res.status(401).json({message: "Invalid email or password"});
         }
 
-        const subscription = await Subscriptions.findOne({user_id: user.id}).populate("plan_id");
+
+        const subscription = await getUserSubscription(
+            user._id
+        );
 
         const plan = subscription?.plan_id as IPlan;
         const usage = subscription?.current_usage ?? 0;
@@ -113,7 +117,9 @@ export const getCurrentUser = async (req: Request, res: Response) => {
         return res.status(404).json({message: "User does not exist"})
     }
 
-    const subscription = await Subscriptions.findOne({user_id: user.id}).populate("plan_id");
+    const subscription = await getUserSubscription(
+        req.user!._id
+    );;
 
     const plan = subscription?.plan_id as IPlan;
         const usage = subscription?.current_usage ?? 0;

@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import { Subscriptions } from "../models/subscriptions.ts";
+import { getUserSubscription } from "../lib/getUserSubscription.ts";
 import { User } from '../models/users.ts';
 import { Team } from '../models/team.ts';
 
@@ -22,9 +23,9 @@ export const getAdminTeam = async (req: Request, res: Response) => {
             _id: { $in: team.members.map(id => id.toString())} 
         }).select("name email role");
 
-        const subscription = await Subscriptions.findOne({
-            user_id: user._id
-        }).populate("plan_id");
+        const subscription = await getUserSubscription(
+            req.user!._id
+        );
 
         return res.status(200).json({
             team,

@@ -5,6 +5,7 @@ import { WebhookEvent } from '../models/webhookevents.ts';
 import { Team } from '../models/team.ts';
 import type { Request, Response } from 'express';
 import { Types } from "mongoose";
+import { getUserSubscription } from '../lib/getUserSubscription.ts';
 import Stripe from 'stripe';
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string)
 
@@ -41,7 +42,9 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
         const isAdmin = user.role === "admin" ;     
 
         let session;
-        let subscription = await Subscriptions.findOne({user_id: user._id}).populate("plan_id");
+        let subscription = await getUserSubscription(
+            req.user!._id
+        );
 
         const hasSubscription = !!subscription;
 

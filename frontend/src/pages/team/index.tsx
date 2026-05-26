@@ -4,77 +4,127 @@ import Cookies from "js-cookie";
 
 const AdminTeamDashboard = () => {
 
-const [team, setTeam] = useState<any>(null);
-const [members, setMembers] = useState<any[]>([]);
-const [subscription, setSubscription] = useState<any>(null);
-const [email, setEmail] = useState("");
-const token = Cookies.get("token");
+    const [team, setTeam] = useState<any>(null);
+    const [members, setMembers] = useState<any[]>([]);
+    const [subscription, setSubscription] = useState<any>(null);
+    const [email, setEmail] = useState("");
+    const [inviteLink, setInviteLink] = useState("");
+    const token = Cookies.get("token");
 
 
 
-const fetchTeam = async () => {
-    const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/team/admin`,
-        {
-            headers: {
-                Authorization: `Bearer ${token}`
+    const fetchTeam = async () => {
+        const res = await fetch(
+            `${import.meta.env.VITE_API_URL}/api/team/admin`,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
             }
+        );
+
+        const data = await res.json();
+
+        if (res.ok) {
+            setTeam(data.team);
+            setMembers(data.members);
+            setSubscription(data.subscription);
         }
-    );
+    };
 
-    const data = await res.json();
+    useEffect(() => {
+        fetchTeam();
+    }, []);
 
-    if (res.ok) {
-        setTeam(data.team);
-        setMembers(data.members);
-        setSubscription(data.subscription);
-    }
-};
+    const inviteMember = async () => {
+        if (!email) return;
 
-useEffect(() => {
-    fetchTeam();
-}, []);
+        const res = await fetch(
+            `${import.meta.env.VITE_API_URL}/api/team/invite/create`,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    email
+                })
+            }
+        );
 
+        const data = await res.json();
 
-return (
-    <div className="p-10">
+        if (res.ok) {
+            setInviteLink(data.invite_url);
+            setEmail("");
+        }
+    };
 
-        <h1 className="text-2xl font-bold">Team Dashboard</h1>
+    return (
+        <div className="p-10">
 
-        {/* Subscription */}
-        <div className="mt-4 p-4 border rounded">
-            <p>Plan: {subscription?.plan_id?.name}</p>
-            <p>Status: {subscription?.status}</p>
-        </div>
+            <h1 className="text-2xl font-bold">Team Dashboard</h1>
 
-        {/* Add Member */}
-        <div className="mt-6 flex gap-2">
-            <input
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter user email"
-                className="border p-2"
-            />
-            <button  className="bg-black text-white px-4">
-                Add
-            </button>
-        </div>
+            {/* Subscription */}
+            <div className="mt-4 p-4 border rounded">
+                <p>Plan: {subscription?.plan_id?.name}</p>
+                <p>Status: {subscription?.status}</p>
+            </div>
 
-        {/* Members */}
-        <div className="mt-6">
-            <h2 className="font-semibold">Team Members</h2>
+            {/* Add Member */}
+            <div className="mt-6 flex gap-2">
+                <input
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Enter user email"
+                    className="border p-2"
+                />
+                <button onClick={inviteMember} className="bg-black text-white px-4">
+                    Add
+                </button>
+            </div>
 
-            {members.map((m) => (
-                <div key={m._id} className="flex justify-between border p-2 mt-2">
-                    <span>{m.email}</span>
-                    <button >
-                        Remove
-                    </button>
+            {inviteLink && (
+                <div className="mt-4 border p-4 rounded">
+                    <p className="font-medium mb-2">
+                        Invite Link
+                    </p>
+
+                    <div className="flex gap-2">
+                        <input
+                            value={inviteLink}
+                            readOnly
+                            className="border p-2 flex-1"
+                        />
+
+                        <button
+                            onClick={() => {
+                                navigator.clipboard.writeText(inviteLink);
+                            }}
+                            className="bg-black text-white px-4"
+                        >
+                            Copy
+                        </button>
+                    </div>
                 </div>
-            ))}
+            )}
+
+            {/* Members */}
+            <div className="mt-6">
+                <h2 className="font-semibold">Team Members</h2>
+
+                {members.map((m) => (
+                    <div key={m._id} className="flex justify-between border p-2 mt-2">
+                        <span>{m.email}</span>
+                        <button >
+                            Remove
+                        </button>
+                    </div>
+                ))}
+            </div>
         </div>
-    </div>
-);
+    );
 
 };
 
