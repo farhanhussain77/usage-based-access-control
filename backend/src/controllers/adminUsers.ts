@@ -198,17 +198,26 @@ export const deleteUser = async (req: Request, res: Response) => {
             });
         }
 
-        const subscription =
-        await getUserSubscription(
-            req.user!._id
-        );
+        // 🔥 FIX: use target user, not req.user
+        const subscription = await Subscriptions.findOne({
+            user_id: user._id
+        });
 
-        if (
-            subscription?.stripe_subscription_id
-        ) {
-            await stripe.subscriptions.cancel(
-                subscription.stripe_subscription_id
-            );
+        if (subscription?.stripe_subscription_id) {
+
+            try {
+                await stripe.subscriptions.cancel(
+                    subscription.stripe_subscription_id
+                );
+            } catch (err: any) {
+
+                // ⚠️ IMPORTANT: ignore if already deleted in Stripe
+                if (err?.code === "resource_missing") {
+                    console.warn("Subscription already deleted in Stripe");
+                } else {
+                    throw err;
+                }
+            }
         }
 
         await Subscriptions.deleteOne({

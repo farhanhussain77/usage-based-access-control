@@ -7,6 +7,7 @@ import type { Request, Response } from 'express';
 import { Types } from "mongoose";
 import { getUserSubscription } from '../lib/getUserSubscription.ts';
 import Stripe from 'stripe';
+import { TeamMember } from '../models/teammembers.ts';
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string)
 
 export const createCheckoutSession = async (req: Request, res: Response) => {
@@ -462,17 +463,18 @@ const teamName = email.split("@")[0] || "team";
             // create team if not exists
             if (!team) {
                 team = await Team.create({
-                    name: teamName,
+                    name: user.email.split("@")[0] || "team",
                     owner_id: userId,
-                    members: [userId],
+                    status: "active"
+                });
+
+                await TeamMember.create({
+                    team_id: team._id,
+                    user_id: userId,
+                    role: "owner",
                     status: "active"
                 });
             }
-
-            // attach user to team
-            await User.findByIdAndUpdate(userId, {
-                team_id: team._id
-            });
         }
 
         return true;

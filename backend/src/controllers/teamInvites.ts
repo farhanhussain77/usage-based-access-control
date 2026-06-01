@@ -5,6 +5,7 @@ import { hashPassword } from "../lib/passwordHelper.ts";
 import { Team } from "../models/team.ts";
 import { User } from "../models/users.ts";
 import { TeamInvite } from "../models/teaminvite.ts";
+import { TeamMember } from "../models/teammembers.ts";
 
 
 
@@ -39,8 +40,9 @@ export const createInvite = async (
             });
         }
 
-        const memberCount = await User.countDocuments({
-            team_id: team._id
+        const memberCount = await TeamMember.countDocuments({
+            team_id: team._id,
+            status: "active"
         });
 
         const MAX_TEAM_MEMBERS = 50;
@@ -213,23 +215,20 @@ export const acceptInvite = async (
         const hashedPassword =
             await hashPassword(password);
 
+        // 1. Create user (NO team_id)
         const user = await User.create({
             email: invite.email,
             password: hashedPassword,
-
-            role: "customer",
-
-            team_id: invite.team_id
+            role: "customer"
         });
 
-        await Team.findByIdAndUpdate(
-            invite.team_id,
-            {
-                $push: {
-                    members: user._id
-                }
-            }
-        );
+        // 2. Add to TeamMember collection
+        await TeamMember.create({
+            team_id: invite.team_id,
+            user_id: user._id,
+            role: "member",
+            status: "active"
+        });
 
         invite.status = "accepted";
         invite.used_at = new Date();

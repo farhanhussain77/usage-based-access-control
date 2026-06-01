@@ -74,13 +74,16 @@ const login = async (req: Request, res: Response) => {
             return res.status(401).json({message: "Invalid email or password"});
         }
 
-
         const subscription = await getUserSubscription(
             user._id
         );
-
-        const plan = subscription?.plan_id as IPlan;
+        console.log("subscription2", subscription);
+        const plan = subscription?.plan_id as IPlan | undefined;
         const usage = subscription?.current_usage ?? 0;
+
+        const limitExceeded = plan
+            ? usage >= plan.max_usage_limit
+            : false;
 
         const userPayload = {
             name: user.name,
@@ -90,8 +93,7 @@ const login = async (req: Request, res: Response) => {
             subscription: subscription
                 ? {
                       plan: plan?.name,
-                      limit_exceeded:
-                          usage >= plan?.max_usage_limit
+                      limit_exceeded: limitExceeded
                   }
                 : null
         };
