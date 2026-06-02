@@ -13,6 +13,7 @@ import Stripe from 'stripe';
 import adminPlansRoutes from "./routes/adminPlans.ts";
 import adminUserRoutes from "./routes/adminUsers.ts";
 import teamInviteRoutes from "./routes/teamInvites.ts";
+import adminStatsRoutes from "./routes/adminStats.ts";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
 
@@ -43,6 +44,7 @@ app.use("/api/plans", authenticate, adminPlansRoutes);
 app.use("/api/users", authenticate, authorizeRoles("admin"), adminUserRoutes)
 app.use("/api/team/admin", authenticate, adminTeams)
 app.use("/api/team/invite", teamInviteRoutes);
+app.use("/api/admin/stats", adminStatsRoutes);
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`)

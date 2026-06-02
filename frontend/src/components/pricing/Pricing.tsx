@@ -74,7 +74,7 @@ const Pricing = () => {
                     body: JSON.stringify({
                         plan_id: plan._id,
                         success_url:
-                            user?.role === "admin" ? "http://localhost:5173/adminteam" : "http://localhost:5173"
+                            user?.role === "admin" ? "http://localhost:5173/team/dashboard" : "http://localhost:5173"
                     })
                 }
             );
@@ -140,7 +140,7 @@ const Pricing = () => {
                     <div className="flex gap-2 bg-gray-100 p-1 rounded-lg">
                         <button
                             onClick={() => setActiveTab("individual")}
-                            className={`px-4 py-2 rounded-md text-sm font-medium ${activeTab === "individual"
+                            className={`px-4 py-2 rounded-md text-sm font-medium cursor-pointer ${activeTab === "individual"
                                     ? "bg-white shadow"
                                     : "text-gray-600"
                                 }`}
@@ -150,7 +150,7 @@ const Pricing = () => {
 
                         <button
                             onClick={() => setActiveTab("team")}
-                            className={`px-4 py-2 rounded-md text-sm font-medium ${activeTab === "team"
+                            className={`px-4 py-2 rounded-md text-sm font-medium cursor-pointer ${activeTab === "team"
                                     ? "bg-white shadow"
                                     : "text-gray-600"
                                 }`}
@@ -186,7 +186,7 @@ const Pricing = () => {
 
                                 <CardFooter>
                                     <Button
-                                        className="w-full"
+                                        className="w-full cursor-pointer"
                                         disabled={currentPlan === plan.name || pendingPlanId === plan._id}
                                         onClick={() => onClickPlan(plan)}
                                     >

@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import Cookies from "js-cookie";
 
-const AdminTeamDashboard = () => {
+const TeamDashboard = () => {
     const [team, setTeam] = useState<any>(null);
     const [members, setMembers] = useState<any[]>([]);
     const [subscription, setSubscription] = useState<any>(null);
     const [email, setEmail] = useState("");
     const [inviteLink, setInviteLink] = useState("");
     const [loading, setLoading] = useState(false);
+    const [showInviteDrawer, setShowInviteDrawer] = useState(false);
 
     const token = Cookies.get("token");
 
@@ -62,132 +63,236 @@ const AdminTeamDashboard = () => {
         }
     };
 
+    const removeMember = async (
+        memberId: string
+    ) => {
+    
+        const confirmed = window.confirm(
+            "Remove this member?"
+        );
+    
+        if (!confirmed) return;
+    
+        const res = await fetch(
+            `${import.meta.env.VITE_API_URL}/api/team/admin/member/${memberId}`,
+            {
+                method: "DELETE",
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            }
+        );
+    
+        if (res.ok) {
+            fetchTeam();
+        }
+    };
+
     return (
-        <div className="p-8 max-w-6xl mx-auto">
-
-            {/* Header */}
+        <div className="p-8">
+    
+            {/* Top Header */}
             <div className="flex justify-between items-center mb-8">
+    
                 <div>
-                    <h1 className="text-3xl font-bold">Team Dashboard</h1>
-                    <p className="text-gray-500">
-                        Manage your team and subscription
+                    <h1 className="text-3xl font-bold">
+                        Team Members
+                    </h1>
+    
+                    <p className="text-gray-500 mt-1">
+                        Manage members of your team
                     </p>
                 </div>
-
-                <div className="text-sm px-4 py-2 bg-gray-100 rounded">
-                    Team: {team?.name || "N/A"}
-                </div>
+    
+                <button
+                    onClick={() =>
+                        setShowInviteDrawer(true)
+                    }
+                    className="px-4 py-2 bg-black text-white rounded-lg cursor-pointer"
+                >
+                    Add Member
+                </button>
+    
             </div>
+    
+            <div className="grid grid-cols-2 gap-4 mb-8">
 
-            {/* Subscription Card */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+    <div className="border rounded-xl p-4">
+        <p className="text-gray-500 text-sm">
+            Team Name
+        </p>
 
-                <div className="border rounded-xl p-4">
-                    <p className="text-gray-500 text-sm">Plan</p>
-                    <p className="text-xl font-semibold capitalize">
-                        {subscription?.plan_id?.name || "N/A"}
-                    </p>
-                </div>
+        <p className="font-semibold text-lg">
+            {team?.name}
+        </p>
+    </div>
 
-                <div className="border rounded-xl p-4">
-                    <p className="text-gray-500 text-sm">Status</p>
-                    <p className="text-xl font-semibold">
-                        {subscription?.status || "inactive"}
-                    </p>
-                </div>
+    <div className="border rounded-xl p-4">
+        <p className="text-gray-500 text-sm">
+            Members
+        </p>
 
-                <div className="border rounded-xl p-4">
-                    <p className="text-gray-500 text-sm">Members</p>
-                    <p className="text-xl font-semibold">
-                        {members.length}
-                    </p>
-                </div>
+        <p className="font-semibold text-lg">
+            {members.length} / 50
+        </p>
+    </div>
+
+</div>
+    
+            {/* Members Table */}
+    
+            <div className="bg-white border rounded-xl overflow-hidden">
+    
+                <table className="w-full">
+    
+                    <thead className="bg-gray-50">
+    
+                        <tr>
+                            <th className="text-left p-4">
+                                Email
+                            </th>
+    
+                            <th className="text-left p-4">
+                                Role
+                            </th>
+    
+                            <th className="text-left p-4">
+                                Actions
+                            </th>
+                        </tr>
+    
+                    </thead>
+    
+                    <tbody>
+    
+                        {members.map((member) => (
+                            <tr
+                                key={member._id}
+                                className="border-t"
+                            >
+                                <td className="p-4">
+                                    {member.email}
+                                </td>
+    
+                                <td className="p-4">
+                                    {member.role}
+                                </td>
+    
+                                <td className="p-4">
+                                    <div className="flex gap-2">
+                                    <button
+                                        className="text-red-500 hover:bg-red-500 hover:text-white rounded-md p-2 cursor-pointer"
+                                        onClick={() => removeMember(member._id)}
+                                        >
+                                            Remove
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+    
+                    </tbody>
+    
+                </table>
+    
             </div>
-
-            {/* Invite Section */}
-            <div className="border rounded-xl p-6 mb-8">
-                <h2 className="text-lg font-semibold mb-4">
-                    Invite Team Member
-                </h2>
-
-                <div className="flex gap-2">
-                    <input
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="Enter user email"
-                        className="border p-3 rounded w-full"
-                    />
-
-                    <button
-                        onClick={inviteMember}
-                        className="bg-black text-white px-5 rounded"
-                    >
-                        Send Invite
-                    </button>
-                </div>
-
-                {inviteLink && (
-                    <div className="mt-4 p-4 bg-gray-50 border rounded">
-                        <p className="text-sm font-medium mb-2">
-                            Invite Link
-                        </p>
-
-                        <div className="flex gap-2">
-                            <input
-                                value={inviteLink}
+    
+            {/* Drawer Backdrop */}
+    
+            {showInviteDrawer && (
+                <div
+                    className="fixed inset-0 bg-black/40 z-40"
+                    onClick={() =>
+                        setShowInviteDrawer(false)
+                    }
+                />
+            )}
+    
+            {/* Right Drawer */}
+    
+            <div
+                className={`fixed top-0 right-0 h-full w-[450px] bg-white shadow-xl z-50 transition-transform duration-300 ${
+                    showInviteDrawer
+                        ? "translate-x-0"
+                        : "translate-x-full"
+                }`}
+            >
+    
+                <div className="p-6">
+    
+                    <div className="flex justify-between items-center mb-6">
+    
+                        <h2 className="text-xl font-semibold">
+                            Add Member
+                        </h2>
+    
+                        <button
+                            onClick={() =>
+                                setShowInviteDrawer(false)
+                            }
+                        >
+                            ✕
+                        </button>
+    
+                    </div>
+    
+                    <div>
+    
+                        <label className="block text-sm mb-2">
+                            Email
+                        </label>
+    
+                        <input
+                            value={email}
+                            onChange={(e) =>
+                                setEmail(e.target.value)
+                            }
+                            placeholder="Enter email"
+                            className="w-full border rounded-lg p-3"
+                        />
+    
+                        <button
+                            onClick={inviteMember}
+                            className="w-full mt-4 bg-black text-white py-3 rounded-lg cursor-pointer"
+                        >
+                            Create Invite
+                        </button>
+    
+                    </div>
+    
+                    {inviteLink && (
+                        <div className="mt-8">
+    
+                            <h3 className="font-medium mb-2">
+                                Invite URL
+                            </h3>
+    
+                            <textarea
                                 readOnly
-                                className="border p-2 flex-1 rounded"
+                                value={inviteLink}
+                                className="w-full border rounded-lg p-3 h-32"
                             />
-
+    
                             <button
                                 onClick={() =>
-                                    navigator.clipboard.writeText(inviteLink)
+                                    navigator.clipboard.writeText(
+                                        inviteLink
+                                    )
                                 }
-                                className="bg-black text-white px-4 rounded"
+                                className="mt-3 w-full border py-3 rounded-lg cursor-pointer"
                             >
-                                Copy
+                                Copy Link
                             </button>
+    
                         </div>
-                    </div>
-                )}
+                    )}
+    
+                </div>
+    
             </div>
-
-            {/* Members Section */}
-            <div className="border rounded-xl p-6">
-                <h2 className="text-lg font-semibold mb-4">
-                    Team Members
-                </h2>
-
-                {loading ? (
-                    <p>Loading...</p>
-                ) : members.length === 0 ? (
-                    <p className="text-gray-500">No members found</p>
-                ) : (
-                    <div className="space-y-2">
-                        {members.map((m) => (
-                            <div
-                                key={m._id}
-                                className="flex justify-between items-center border p-3 rounded"
-                            >
-                                <div>
-                                    <p className="font-medium">
-                                        {m.email}
-                                    </p>
-                                    <p className="text-xs text-gray-500">
-                                        {m.role}
-                                    </p>
-                                </div>
-
-                                <button className="text-red-500 text-sm">
-                                    Remove
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
+    
         </div>
     );
 };
 
-export default AdminTeamDashboard;
+export default TeamDashboard;

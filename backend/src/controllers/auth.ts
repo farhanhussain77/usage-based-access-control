@@ -6,6 +6,7 @@ import { Subscriptions } from "../models/subscriptions.ts";
 import type { IPlan } from "../models/plans.ts";
 import { Plans } from "../models/plans.ts";
 import { getUserSubscription } from "../lib/getUserSubscription.ts";
+import { TeamMember } from "../models/teammembers.ts";
 
 const createUser = async (req: Request, res: Response) => {
     console.log("createUser", req.body);
@@ -74,6 +75,10 @@ const login = async (req: Request, res: Response) => {
             return res.status(401).json({message: "Invalid email or password"});
         }
 
+        const teamMember = await TeamMember.findOne({
+            user_id: user._id,
+        });
+
         const subscription = await getUserSubscription(
             user._id
         );
@@ -89,6 +94,10 @@ const login = async (req: Request, res: Response) => {
             name: user.name,
             email: user.email,
             role: user.role,
+            team_id: teamMember?.team_id ?? null,
+
+    is_team_member: !!teamMember,
+    is_individual_customer: !teamMember && user.role === "customer",
 
             subscription: subscription
                 ? {
@@ -121,15 +130,24 @@ export const getCurrentUser = async (req: Request, res: Response) => {
 
     const subscription = await getUserSubscription(
         req.user!._id
-    );;
+    );
+
+    const teamMember = await TeamMember.findOne({
+        user_id: req.user!._id,
+    });
 
     const plan = subscription?.plan_id as IPlan;
         const usage = subscription?.current_usage ?? 0;
+        const expiryDate = subscription?.end_date ?? null;
 
     const userPayload = {
         name: user.name, 
         email: user.email,
         role: user.role,
+        team_id: teamMember?.team_id ?? null,
+
+    is_team_member: !!teamMember,
+    is_individual_customer: !teamMember && user.role === "customer",
         subscription: subscription
             ? {
                   plan: plan?.name,
@@ -137,7 +155,7 @@ export const getCurrentUser = async (req: Request, res: Response) => {
                   current_usage: usage,
                   max_usage_limit:
                       plan?.max_usage_limit,
-
+                  expiry_date: expiryDate,
                   limit_exceeded:
                       usage >=
                       plan?.max_usage_limit

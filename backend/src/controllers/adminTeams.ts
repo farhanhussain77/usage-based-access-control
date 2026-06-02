@@ -48,3 +48,71 @@ export const getAdminTeam = async (req: Request, res: Response) => {
         return res.status(500).json({ message: "Server error" });
     }
 };
+
+
+
+export const removeMember = async (
+    req: Request,
+    res: Response
+) => {
+    try {
+        const { memberId } = req.params;
+
+        // 1. Get admin
+        const admin = await User.findById(req.user?._id);
+
+        if (!admin) {
+            return res.status(404).json({
+                message: "Admin not found"
+            });
+        }
+
+        // 2. Get team
+        const team = await Team.findOne({
+            owner_id: admin._id
+        });
+
+        if (!team) {
+            return res.status(404).json({
+                message: "Team not found"
+            });
+        }
+
+
+
+if (!memberId) {
+    return res.status(400).json({ message: "Invalid member id" });
+}
+
+const teamMember = await TeamMember.findOne({
+    user_id: memberId,
+    team_id: team._id
+});
+
+        if (!teamMember) {
+            return res.status(404).json({
+                message: "Member not found"
+            });
+        }
+
+        // 4. Delete user (IMPORTANT PART)
+        await User.findByIdAndDelete(teamMember.user_id);
+
+        // 5. Delete membership record
+        await TeamMember.deleteOne({
+            _id: teamMember._id
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: "Member removed and user deleted"
+        });
+
+    } catch (err) {
+        console.error(err);
+
+        return res.status(500).json({
+            message: "Internal server error"
+        });
+    }
+};

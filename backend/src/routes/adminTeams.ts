@@ -1,9 +1,11 @@
 import { Router } from "express";
 const router = Router();
 
-import { getAdminTeam } from "../controllers/adminTeams.ts";
+import { getAdminTeam, removeMember } from "../controllers/adminTeams.ts";
+
 
 
 router.get( "/", getAdminTeam );
+router.delete( "/member/:memberId", removeMember );
 
 export default router;

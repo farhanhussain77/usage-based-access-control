@@ -170,7 +170,7 @@ const Users = () => {
 
                 <button
                     onClick={() => setShowCreateAdmin(true)}
-                    className="bg-black text-white px-4 py-2 rounded"
+                    className="bg-black text-white px-4 py-2 rounded cursor-pointer"
                 >
                     Create Admin
                 </button>
@@ -236,14 +236,14 @@ const Users = () => {
                                     <td className="p-3 flex gap-2">
                                         <button
                                             onClick={() => disableUser(user._id)}
-                                            className="bg-yellow-500 text-white px-3 py-1 rounded text-xs"
+                                            className="bg-yellow-500 text-white px-3 py-1 rounded text-xs cursor-pointer"
                                         >
                                             Disable
                                         </button>
 
                                         <button
                                             onClick={() => deleteUser(user._id)}
-                                            className="bg-red-500 text-white px-3 py-1 rounded text-xs"
+                                            className="bg-red-500 text-white px-3 py-1 rounded text-xs cursor-pointer"
                                         >
                                             Delete
                                         </button>
@@ -310,7 +310,7 @@ const Users = () => {
 
                 <button
                     onClick={createAdmin}
-                    className="bg-black text-white w-full py-2 rounded"
+                    className="bg-black text-white w-full py-2 rounded cursor-pointer"
                 >
                     Create
                 </button>
