@@ -11,7 +11,6 @@ const SubscriptionPage = () => {
 
     const isTeamMember = user?.is_team_member;
     const isAdmin = user?.role === "admin";
-    const shouldShowComponent = isAdmin || (!isTeamMember && user?.role !== "customer");
 
     return (
         <div className="p-8">
@@ -91,7 +90,7 @@ const SubscriptionPage = () => {
             </div>
 
             {/* Additional Details */}
-            {shouldShowComponent && (
+            {!(user?.role === "customer" && isTeamMember) && (
                 <div className="border rounded-xl p-6 bg-white">
 
                     <h2 className="text-lg font-semibold mb-4">

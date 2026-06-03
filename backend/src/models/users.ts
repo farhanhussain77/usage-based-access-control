@@ -2,9 +2,9 @@ import { Schema, model, type ObjectId, Types } from 'mongoose';
 
 export type UserRole = "customer" | "admin" | "superadmin";
 
-export interface IUser {
+export interface IUser extends Document {
   _id: string;
-  name?: string;
+  name: string;
   email: string;
   password: string;
   stripe_customer_id?: string;
@@ -13,7 +13,7 @@ export interface IUser {
 }
 
 const userSchema = new Schema<IUser>({
-  name: { type: String },
+  name: { type: String, required: true, },
   email: { type: String, required: true, unique: true, },
   password: {
     type: String,

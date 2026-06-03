@@ -10,7 +10,7 @@ export type PlanKeys = typeof Plan[keyof typeof Plan];
 export interface IUser {
     _id: string;
     email: string;
-    name?: string;
+    name: string;
     role: string;
     team_id?: string | null;
     is_team_member?: boolean;

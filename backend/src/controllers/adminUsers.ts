@@ -109,7 +109,7 @@ export const updateUserRole = async (req: Request, res: Response) => {
 
 export const createAdmin = async (req: Request, res: Response) => {
     try {
-        const { email, password } = req.body;
+        const { name, email, password } = req.body;
 
         const existing = await User.findOne({
             email
@@ -124,6 +124,7 @@ export const createAdmin = async (req: Request, res: Response) => {
         const hashedPassword = await hashPassword(password);
 
         const user = await User.create({
+            name,
             email,
             password: hashedPassword,
             role: "admin",
@@ -138,7 +139,7 @@ export const createAdmin = async (req: Request, res: Response) => {
         console.error(err);
 
         return res.status(500).json({
-            message: "Internal error"
+            message: "Internal server error"
         });
     }
 };

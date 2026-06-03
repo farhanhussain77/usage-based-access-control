@@ -172,11 +172,11 @@ export const acceptInvite = async (
     res: Response
 ) => {
     try {
-        const { token, password } = req.body;
+        const { token, password, name } = req.body;
 
-        if (!token || !password) {
+        if (!token || !password || !name) {
             return res.status(400).json({
-                message: "Token and password required"
+                message: "Token, name and password all are required"
             });
         }
 
@@ -217,6 +217,7 @@ export const acceptInvite = async (
 
         // 1. Create user (NO team_id)
         const user = await User.create({
+            name,
             email: invite.email,
             password: hashedPassword,
             role: "customer"

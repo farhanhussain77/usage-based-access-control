@@ -6,6 +6,7 @@ const TeamInvitePage = () => {
     const { token } = useParams();
     const navigate = useNavigate();
 
+    const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
@@ -40,7 +41,10 @@ const TeamInvitePage = () => {
 
     // 2. Accept invite
     const handleAccept = async () => {
-        if (!password) return;
+        if (!name || !password) {
+            setError("Name and password are required");
+            return;
+        }
 
         setLoading(true);
 
@@ -54,6 +58,7 @@ const TeamInvitePage = () => {
                     },
                     body: JSON.stringify({
                         token,
+                        name,
                         password
                     })
                 }
@@ -103,6 +108,16 @@ const TeamInvitePage = () => {
                 <p className="text-sm mb-3 text-gray-600">
                     Email: <b>{email}</b>
                 </p>
+
+                <input
+                    type="text"
+                    placeholder="Full Name"
+                    className="border p-2 w-full mb-3"
+                    value={name}
+                    onChange={(e) =>
+                        setName(e.target.value)
+                    }
+                />
 
                 <input
                     type="password"

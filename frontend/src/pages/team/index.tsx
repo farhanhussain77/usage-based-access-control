@@ -9,6 +9,7 @@ const TeamDashboard = () => {
     const [inviteLink, setInviteLink] = useState("");
     const [loading, setLoading] = useState(false);
     const [showInviteDrawer, setShowInviteDrawer] = useState(false);
+    const [search, setSearch] = useState("");
 
     const token = Cookies.get("token");
 
@@ -88,6 +89,10 @@ const TeamDashboard = () => {
         }
     };
 
+    const filteredMembers = members.filter((member) =>
+        member.name?.toLowerCase().includes(search.toLowerCase())
+    );
+
     return (
         <div className="p-8">
     
@@ -138,6 +143,16 @@ const TeamDashboard = () => {
     </div>
 
 </div>
+
+<div className="mb-4">
+    <input
+        type="text"
+        placeholder="Filter by Name"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="border p-2 rounded w-64"
+    />
+</div>
     
             {/* Members Table */}
     
@@ -148,6 +163,9 @@ const TeamDashboard = () => {
                     <thead className="bg-gray-50">
     
                         <tr>
+                        <th className="text-left p-4">
+                                Name
+                            </th>
                             <th className="text-left p-4">
                                 Email
                             </th>
@@ -165,11 +183,15 @@ const TeamDashboard = () => {
     
                     <tbody>
     
-                        {members.map((member) => (
+                        {filteredMembers.map((member) => (
                             <tr
                                 key={member._id}
                                 className="border-t"
                             >
+                                <td className="p-4">
+                                    {member.name}
+                                </td>
+                                
                                 <td className="p-4">
                                     {member.email}
                                 </td>

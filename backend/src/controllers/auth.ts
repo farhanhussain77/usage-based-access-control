@@ -13,16 +13,18 @@ const createUser = async (req: Request, res: Response) => {
     const body = req.body;
 
     try{
+        const name = body.name;
         const email = body.email;
         const password = body.password;
 
-        if(!email || !password){
-            return res.status(400).json({success: false, message: "Invalid request! email and password are required"})
+        if(!name || !email || !password){
+            return res.status(400).json({success: false, message: "Invalid request!, name, email and password are required"})
         }
 
         const hashedPassword = await hashPassword(password);
 
         const user = await User.create({
+            name: body.name,
             email: body.email,
             password: hashedPassword
         });
