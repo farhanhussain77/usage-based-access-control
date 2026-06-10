@@ -5,10 +5,15 @@ import Dashboard from './pages/dashboard';
 import Pricing from './components/pricing/Pricing';
 import MainLayout from './components/layouts/MainLayout';
 import AdminLayout from './components/admin/AdminLayout';
+import AdminTeamLayout from './components/admin/AdminTeamLayout';
 import AuthProvider from './contexts/Auth';
 import AdminPlans from "./pages/admin/Plans";
-import AdminTeamDashboard from './pages/team';
-import Users from "./pages/admin/Users"
+import TeamDashboard from './pages/team';
+import Users from "./pages/admin/Users";
+import TeamInvitePage from './pages/teamInvite';
+import TeamSubscriptionPage from './pages/team/subscription';
+import SubscriptionPage from './pages/dashboard/subscription';
+import AdminStats from "./pages/admin/Stats";
 
 //  const Teams = () => <div>Teams Page</div>;
 
@@ -21,13 +26,19 @@ function App() {
           <Route path="/auth" element={<Auth />} />
           <Route element={<MainLayout />}>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/subscription" element={<SubscriptionPage />} />
             <Route path="/pricing" element={<Pricing />} />
           </Route>
           <Route path="/admin" element={<AdminLayout />}>
             <Route path="users" element={<Users />} />
+            <Route path="stats" element={<AdminStats />} />
             <Route path="plans" element={<AdminPlans />} />
           </Route>
-          <Route path="/adminteam" element={<AdminTeamDashboard />} />
+          <Route path="/team" element={<AdminTeamLayout />}>
+            <Route path="dashboard" element={<TeamDashboard />} />
+            <Route path="subscription" element={<TeamSubscriptionPage />} />
+          </Route>
+          <Route path="/team-invite/:token" element={<TeamInvitePage />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

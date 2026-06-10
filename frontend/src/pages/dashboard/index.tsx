@@ -48,6 +48,7 @@ const Dashboard = () => {
     }
 
     const user = getUser();
+    const subscription = user?.subscription;
 
     return (
         <div className="flex flex-col items-center justify-center h-screen">
@@ -57,20 +58,20 @@ const Dashboard = () => {
                 Track API consumption in real time and ensure users stay within their allocated quotas
             </p>
 
-            <Button className="mt-6 w-1/6" onClick={callApi} disabled={user?.subscription?.status === "inactive"}>
+            <Button className="mt-6 w-1/6 cursor-pointer" onClick={callApi} disabled={subscription?.status !== "active"}>
                 {loading ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                 ):(
                     <span>Call API</span>
                 )}
             </Button>
-            {(user?.subscription?.limit_exceeded || limitExceeded ) && (
+            {(subscription?.limit_exceeded || limitExceeded ) && (
                 <div className="mt-5">
                     <span className="text-xs text-red-600">Your API usage limit exceeded. Please consider to </span>
-                    <Link className="text-xs underline font-semibold" to="/pricing">Upgrade</Link>
+                    <Link className="text-xs underline font-semibold cursor-pointer" to="/pricing">Upgrade</Link>
                 </div>
             )}
-            {user?.subscription?.status === "inactive"  && (
+            {subscription?.status !== "active"  && (
                 <div className="mt-5">
                     <span className="text-xs text-red-600">Your are inactive. </span>
                 </div>

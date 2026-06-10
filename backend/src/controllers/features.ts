@@ -1,4 +1,5 @@
 import { Subscriptions } from "../models/subscriptions.ts";
+import { getUserSubscription } from "../lib/getUserSubscription.ts";
 import type { Request, Response } from "express";
 import type { IPlan } from "@/models/plans.ts";
 
@@ -9,7 +10,9 @@ export const featureAccess = async (req: Request, res: Response) => {
         return res.status(400).json({success: false, message: "Bad request"})
     }
 
-    const subscription = await Subscriptions.findOne({user_id: req.user?._id.toString()}).populate("plan_id");
+    const subscription = await getUserSubscription(
+        req.user!._id
+    );
     if(!subscription){
         return res.status(404).json({succcess: false, message: "Subscription does not exists for this user"})
     }

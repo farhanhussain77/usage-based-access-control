@@ -2,6 +2,7 @@ import { User } from '../models/users.ts';
 import { Subscriptions } from '../models/subscriptions.ts';
 import type { Request, Response } from "express";
 import { hashPassword } from "../lib/passwordHelper.ts";
+import { getUserSubscription } from '../lib/getUserSubscription.ts';
 import Stripe from 'stripe';
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string)
 
@@ -11,38 +12,53 @@ export const getAllUsers = async (req: Request, res: Response) => {
     try {
         const users = await User.find({}).select("-password");
 
-        const subscriptions = await Subscriptions.find({})
-            .populate("plan_id");
+        const formatted = await Promise.all(
 
-        const subscriptionMap = new Map();
+            users.map(async (u) => {
 
-        subscriptions.forEach((sub) => {
-            subscriptionMap.set(sub.user_id.toString(), sub);
-        });
+                let subscription = null;
 
-        const formatted = users.map((u) => {
-            const sub = subscriptionMap.get(u._id.toString());
+                try {
 
-            return {
-                _id: u._id,
-                name: u.name,
-                email: u.email,
-                role: u.role,
-                subscription: sub
-                    ? {
-                          plan: sub.plan_id?.name,
-                          status: sub.status,
-                          current_usage: sub.current_usage,
-                          max_usage_limit: sub.plan_id?.max_usage_limit
-                      }
-                    : {
-                          plan: "none",
-                          status: "inactive",
-                          current_usage: 0,
-                          max_usage_limit: 0
-                      }
-            };
-        });
+                    subscription =
+                        await getUserSubscription(
+                            u._id
+                        );
+
+                } catch {
+                    subscription = null;
+                }
+
+                return {
+                    _id: u._id,
+                    name: u.name,
+                    email: u.email,
+                    role: u.role,
+
+                    subscription: subscription
+                        ? {
+                              plan:
+                                  subscription.plan_id?.name,
+
+                              status:
+                                  subscription.status,
+
+                              current_usage:
+                                  subscription.current_usage,
+
+                              max_usage_limit:
+                                  subscription.plan_id
+                                      ?.max_usage_limit
+                          }
+                        : {
+                              plan: "none",
+                              status: "inactive",
+                              current_usage: 0,
+                              max_usage_limit: 0
+                          }
+                };
+            })
+        );
 
         return res.json({ success: true, users: formatted });
 
@@ -93,7 +109,7 @@ export const updateUserRole = async (req: Request, res: Response) => {
 
 export const createAdmin = async (req: Request, res: Response) => {
     try {
-        const { email, password } = req.body;
+        const { name, email, password } = req.body;
 
         const existing = await User.findOne({
             email
@@ -108,6 +124,7 @@ export const createAdmin = async (req: Request, res: Response) => {
         const hashedPassword = await hashPassword(password);
 
         const user = await User.create({
+            name,
             email,
             password: hashedPassword,
             role: "admin",
@@ -122,7 +139,7 @@ export const createAdmin = async (req: Request, res: Response) => {
         console.error(err);
 
         return res.status(500).json({
-            message: "Internal error"
+            message: "Internal server error"
         });
     }
 };
@@ -143,9 +160,9 @@ export const disableUser = async (
         }
 
         const subscription =
-            await Subscriptions.findOne({
-                user_id: userId
-            });
+        await getUserSubscription(
+            req.user!._id
+        );
 
         if (!subscription) {
             return res.status(404).json({
@@ -182,17 +199,26 @@ export const deleteUser = async (req: Request, res: Response) => {
             });
         }
 
-        const subscription =
-            await Subscriptions.findOne({
-                user_id: user._id
-            });
+        // 🔥 FIX: use target user, not req.user
+        const subscription = await Subscriptions.findOne({
+            user_id: user._id
+        });
 
-        if (
-            subscription?.stripe_subscription_id
-        ) {
-            await stripe.subscriptions.cancel(
-                subscription.stripe_subscription_id
-            );
+        if (subscription?.stripe_subscription_id) {
+
+            try {
+                await stripe.subscriptions.cancel(
+                    subscription.stripe_subscription_id
+                );
+            } catch (err: any) {
+
+                // ⚠️ IMPORTANT: ignore if already deleted in Stripe
+                if (err?.code === "resource_missing") {
+                    console.warn("Subscription already deleted in Stripe");
+                } else {
+                    throw err;
+                }
+            }
         }
 
         await Subscriptions.deleteOne({

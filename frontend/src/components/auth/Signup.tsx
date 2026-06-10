@@ -17,6 +17,7 @@ interface IProps {
 const Signup = ({onChangeMode}: IProps) => {
     
     const [form, setForm] = useState({
+        name: '',
         email: '',
         password: '',
         confirm_password: ''
@@ -46,6 +47,7 @@ const Signup = ({onChangeMode}: IProps) => {
                 'content-type': 'application/json'
             },
             body: JSON.stringify({
+                name: form.name,
                 email: form.email,
                 password: form.password
             })
@@ -72,6 +74,17 @@ const Signup = ({onChangeMode}: IProps) => {
             <CardContent>
                 <form onSubmit={onSubmit}>
                     <div className="flex flex-col gap-6">
+                    <div className="grid gap-2">
+                            <Label htmlFor="name">Name</Label>
+                            <Input
+                                name="name"
+                                id="name"
+                                type="text"
+                                placeholder="Full Name"
+                                required
+                                onChange={onChange}
+                            />
+                        </div>
                         <div className="grid gap-2">
                             <Label htmlFor="email">Email</Label>
                             <Input

@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { Plans } from "../models/plans.ts";
 import { Subscriptions } from "../models/subscriptions.ts";
+import { getUserSubscription } from "../lib/getUserSubscription.ts";
 import Stripe from "stripe";
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string)
 
@@ -18,7 +19,7 @@ export const getPlans = async (
     const userId = (req as any).user?._id; 
     
     if (userId) {
-      const userSubscription = await Subscriptions.findOne({ user_id: userId });
+      const userSubscription = await getUserSubscription(userId);
       
       if (userSubscription && userSubscription.pending_plan_id) {
         pendingPlanId = userSubscription.pending_plan_id.toString();

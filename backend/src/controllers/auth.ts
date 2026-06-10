@@ -5,22 +5,26 @@ import jwt from 'jsonwebtoken';
 import { Subscriptions } from "../models/subscriptions.ts";
 import type { IPlan } from "../models/plans.ts";
 import { Plans } from "../models/plans.ts";
+import { getUserSubscription } from "../lib/getUserSubscription.ts";
+import { TeamMember } from "../models/teammembers.ts";
 
 const createUser = async (req: Request, res: Response) => {
     console.log("createUser", req.body);
     const body = req.body;
 
     try{
+        const name = body.name;
         const email = body.email;
         const password = body.password;
 
-        if(!email || !password){
-            return res.status(400).json({success: false, message: "Invalid request! email and password are required"})
+        if(!name || !email || !password){
+            return res.status(400).json({success: false, message: "Invalid request!, name, email and password are required"})
         }
 
         const hashedPassword = await hashPassword(password);
 
         const user = await User.create({
+            name: body.name,
             email: body.email,
             password: hashedPassword
         });
@@ -73,21 +77,34 @@ const login = async (req: Request, res: Response) => {
             return res.status(401).json({message: "Invalid email or password"});
         }
 
-        const subscription = await Subscriptions.findOne({user_id: user.id}).populate("plan_id");
+        const teamMember = await TeamMember.findOne({
+            user_id: user._id,
+        });
 
-        const plan = subscription?.plan_id as IPlan;
+        const subscription = await getUserSubscription(
+            user._id
+        );
+        console.log("subscription2", subscription);
+        const plan = subscription?.plan_id as IPlan | undefined;
         const usage = subscription?.current_usage ?? 0;
+
+        const limitExceeded = plan
+            ? usage >= plan.max_usage_limit
+            : false;
 
         const userPayload = {
             name: user.name,
             email: user.email,
             role: user.role,
+            team_id: teamMember?.team_id ?? null,
+
+    is_team_member: !!teamMember,
+    is_individual_customer: !teamMember && user.role === "customer",
 
             subscription: subscription
                 ? {
                       plan: plan?.name,
-                      limit_exceeded:
-                          usage >= plan?.max_usage_limit
+                      limit_exceeded: limitExceeded
                   }
                 : null
         };
@@ -113,15 +130,26 @@ export const getCurrentUser = async (req: Request, res: Response) => {
         return res.status(404).json({message: "User does not exist"})
     }
 
-    const subscription = await Subscriptions.findOne({user_id: user.id}).populate("plan_id");
+    const subscription = await getUserSubscription(
+        req.user!._id
+    );
+
+    const teamMember = await TeamMember.findOne({
+        user_id: req.user!._id,
+    });
 
     const plan = subscription?.plan_id as IPlan;
         const usage = subscription?.current_usage ?? 0;
+        const expiryDate = subscription?.end_date ?? null;
 
     const userPayload = {
         name: user.name, 
         email: user.email,
         role: user.role,
+        team_id: teamMember?.team_id ?? null,
+
+    is_team_member: !!teamMember,
+    is_individual_customer: !teamMember && user.role === "customer",
         subscription: subscription
             ? {
                   plan: plan?.name,
@@ -129,7 +157,7 @@ export const getCurrentUser = async (req: Request, res: Response) => {
                   current_usage: usage,
                   max_usage_limit:
                       plan?.max_usage_limit,
-
+                  expiry_date: expiryDate,
                   limit_exceeded:
                       usage >=
                       plan?.max_usage_limit

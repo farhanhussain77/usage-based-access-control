@@ -59,13 +59,18 @@ const Login = ({onChangeMode}: IProps) => {
         Cookies.set('token', result.token);
 
         const role = result.user.role;
+        const isTeamMember = result.user.is_team_member;
         const subscription = result.user.subscription;
         console.log("subscription =", subscription);
 
         if ( role === "superadmin") {
             navigate("/admin/users");
         } else if(role === "admin"){
-            navigate("/pricing");
+            if (isTeamMember) {
+                navigate("/team/dashboard");
+            } else {
+                navigate("/pricing");
+            }
         }else {
             navigate("/");
         }
