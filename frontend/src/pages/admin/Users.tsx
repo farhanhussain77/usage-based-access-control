@@ -149,20 +149,20 @@ const Users = () => {
     }, []);
 
 
-    const resetAdminForm = () => {
-        setAdminForm({
-            name: "",
-            email: "",
-            password: "",
-            confirmPassword: ""
-        });
-    };
+    // const resetAdminForm = () => {
+    //     setAdminForm({
+    //         name: "",
+    //         email: "",
+    //         password: "",
+    //         confirmPassword: ""
+    //     });
+    // };
 
 
-    const closeCreateAdmin = () => {
-        setShowCreateAdmin(false);
-        resetAdminForm();
-    };
+    // const closeCreateAdmin = () => {
+    //     setShowCreateAdmin(false);
+    //     resetAdminForm();
+    // };
 
     const filteredUsers = users.filter((user) =>
         user.name?.toLowerCase().includes(search.toLowerCase())

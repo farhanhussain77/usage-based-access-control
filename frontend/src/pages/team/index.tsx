@@ -4,10 +4,10 @@ import Cookies from "js-cookie";
 const TeamDashboard = () => {
     const [team, setTeam] = useState<any>(null);
     const [members, setMembers] = useState<any[]>([]);
-    const [subscription, setSubscription] = useState<any>(null);
+    const [setSubscription] = useState<any>(null);
     const [email, setEmail] = useState("");
     const [inviteLink, setInviteLink] = useState("");
-    const [loading, setLoading] = useState(false);
+    const [,setLoading] = useState(false);
     const [showInviteDrawer, setShowInviteDrawer] = useState(false);
     const [search, setSearch] = useState("");
 

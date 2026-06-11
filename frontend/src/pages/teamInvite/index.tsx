@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router";
-import Cookies from "js-cookie";
 
 const TeamInvitePage = () => {
     const { token } = useParams();

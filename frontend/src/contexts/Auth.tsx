@@ -10,7 +10,12 @@ interface IAuthContext {
     setLoading: React.Dispatch<React.SetStateAction<boolean>>
 }
 
-export const AuthContext = createContext<IAuthContext>(null);
+export const AuthContext = createContext<IAuthContext>({
+    user: null,
+    setUser: () => {},
+    loading: false,
+    setLoading: () => {}
+});
 
 const AuthProvider = ({children}: PropsWithChildren) => {
     const [user, setUser] = useState(() => {
