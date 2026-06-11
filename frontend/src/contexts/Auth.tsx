@@ -1,45 +1,40 @@
-import type { IUser } from "@/types";
-import { createContext, useState, type PropsWithChildren } from "react";
-import Cookies from 'js-cookie';
-import {jwtDecode} from "jwt-decode";
+import { createContext, useEffect, useState, type PropsWithChildren } from "react";
+import { readTokenFromCookie } from "@/lib/utils";
+import { getCurrentUser } from "@/services/auth";
 
 
 interface IAuthContext {
-    getUser: () => IUser;
-    setUser: React.Dispatch<any>
+    user: any
+    setUser: React.Dispatch<any>;
+    loading: boolean;
+    setLoading: React.Dispatch<React.SetStateAction<boolean>>
 }
 
 export const AuthContext = createContext<IAuthContext>(null);
 
 const AuthProvider = ({children}: PropsWithChildren) => {
-    const [user, setUser] = useState(null);
+    const [user, setUser] = useState(() => {
+        const user = readTokenFromCookie();
+        return user;
+    });
 
-    const getUser = () => {
-        if(user){
-            return user;
-        }
+    const [loading, setLoading] = useState(false);
 
-        const token = Cookies.get("token");
-        if(!token){
-            return;
-        }
-        const decoded: any = jwtDecode(token);
-
-        if(decoded){
-            const user = decoded?.user;
-            setUser(user);
-
-            return user;
-        }
-
-        return null;
-    }
+    useEffect(() => {
+        if(!user) return;
+        getCurrentUser()
+        .then((user: any) => setUser(user))
+        .catch(err => console.log("error while fetching user", err))
+        .finally(() => setLoading(false));
+    }, []);
 
     return (
         <AuthContext.Provider
             value={{
-                getUser,
-                setUser
+                user,
+                setUser,
+                setLoading,
+                loading
             }}
         >
             {children}

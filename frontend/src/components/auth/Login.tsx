@@ -9,15 +9,17 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useState, type ChangeEvent, type SubmitEvent } from "react";
+import { use, useState, type ChangeEvent, type SubmitEvent } from "react";
 import Cookies from 'js-cookie';
 import { useNavigate } from "react-router";
+import { AuthContext } from "@/contexts/Auth";
 
 interface IProps {
     onChangeMode: () => void
 }
 
 const Login = ({onChangeMode}: IProps) => {
+    const {setUser} = use(AuthContext);
     const navigate = useNavigate();
 
     const [form, setForm] = useState({
@@ -56,24 +58,26 @@ const Login = ({onChangeMode}: IProps) => {
         return;
     }
 
-        Cookies.set('token', result.token);
+    Cookies.set('token', result.token);
 
-        const role = result.user.role;
-        const isTeamMember = result.user.is_team_member;
-        const subscription = result.user.subscription;
-        console.log("subscription =", subscription);
+    setUser(result.user);
 
-        if ( role === "superadmin") {
-            navigate("/admin/users");
-        } else if(role === "admin"){
-            if (isTeamMember) {
-                navigate("/team/dashboard");
-            } else {
-                navigate("/pricing");
-            }
-        }else {
-            navigate("/");
+    const role = result.user.role;
+    const isTeamMember = result.user.is_team_member;
+    const subscription = result.user.subscription;
+    console.log("subscription =", subscription);
+
+    if ( role === "superadmin") {
+        navigate("/admin/users");
+    } else if(role === "admin"){
+        if (isTeamMember) {
+            navigate("/team/dashboard");
+        } else {
+            navigate("/pricing");
         }
+    }else {
+        navigate("/");
+    }
 
     }
 

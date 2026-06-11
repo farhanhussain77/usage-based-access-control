@@ -1,7 +1,6 @@
-import { Subscriptions } from "../models/subscriptions.ts";
 import { getUserSubscription } from "../lib/getUserSubscription.ts";
 import type { Request, Response } from "express";
-import type { IPlan } from "@/models/plans.ts";
+import { Plans, type IPlan } from "../models/plans.ts";
 
 export const featureAccess = async (req: Request, res: Response) => {
     console.log("feature API called: ");
@@ -19,9 +18,12 @@ export const featureAccess = async (req: Request, res: Response) => {
 
     if (subscription.status === "past_due") {
         return res.status(402).json({ message: "Payment failed" });
-      }
+    }
 
-    const plan = subscription.plan_id as IPlan;
+    const plan = await Plans.findById(subscription.plan_id);
+    if(!plan){
+        return res.status(404).json({succcess: false, message: "Subscription does not exists for this user"})
+    }
 
     if(subscription.current_usage >= plan.max_usage_limit){
         return res.status(429).json({success: false, message: "Your usage quota exceeded the limit. Please consider to upgrade!"})

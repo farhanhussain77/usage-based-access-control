@@ -16,15 +16,13 @@ type Plan = {
 };
 
 const Pricing = () => {
-    const { getUser } = use(AuthContext);
+    const { user } = use(AuthContext);
 
     const [plans, setPlans] = useState<Plan[]>([]);
     const [loading, setLoading] = useState(false);
     const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
     const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<"individual" | "team">("individual");
-
-    const user = getUser();
 
     const token = Cookies.get("token");
 

@@ -8,7 +8,7 @@ import { Link } from "react-router";
 const Dashboard = () => {
     const [loading, setLoaidng] = useState(false);
     const [limitExceeded, setLimitExceeded] = useState(false);
-    const { getUser } = use(AuthContext);
+    const { user } = use(AuthContext);
 
     const callApi = async () => {
         setLoaidng(true);
@@ -47,7 +47,6 @@ const Dashboard = () => {
         }
     }
 
-    const user = getUser();
     const subscription = user?.subscription;
 
     return (

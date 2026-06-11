@@ -11,7 +11,7 @@ import { use } from "react";
 import { AuthContext } from "@/contexts/Auth";
 
 export function ProfilePopover() {
-    const { getUser } = use(AuthContext);
+    const { user } = use(AuthContext);
     const navigate = useNavigate();
 
     const onLogout = () => {
@@ -19,7 +19,6 @@ export function ProfilePopover() {
         navigate("/auth");
     }
 
-    const user = getUser();
     return (
         <Popover>
             <PopoverTrigger asChild>

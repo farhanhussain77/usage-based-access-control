@@ -9,15 +9,15 @@ import bodyParser from 'body-parser';
 import { authenticate } from "./middlewares/auth.ts";
 import { authorizeRoles } from "./middlewares/authorizeRoles.ts";
 import { handleWebhook } from "./controllers/stripe.ts";
-import Stripe from 'stripe';
 import adminPlansRoutes from "./routes/adminPlans.ts";
 import adminUserRoutes from "./routes/adminUsers.ts";
 import teamInviteRoutes from "./routes/teamInvites.ts";
 import adminStatsRoutes from "./routes/adminStats.ts";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
-
 const app = express();
+if(!process.env.LOCALHOST_URL){
+  throw Error("LOCALHOST_URL Env variable not found!")
+}
 app.use(cors(({ origin: process.env.LOCALHOST_URL })));
 
 const port = process.env.PORT || 3000;
@@ -25,8 +25,6 @@ const port = process.env.PORT || 3000;
 app.get('/', async (req, res) => {
   res.send('Hello World!')
 
-  // const subscription = await stripe.subscriptions.retrieve('sub_1TMmICJzTfFzl3r4yu3wTA5D');
-  // console.log("subscription", subscription);
 });
 
 app.post(
@@ -41,7 +39,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/feature', authenticate, featureRoutes);
 app.use('/api/stripe', stripeRoutes);
 app.use("/api/plans", authenticate, adminPlansRoutes);
-app.use("/api/users", authenticate, authorizeRoles("admin"), adminUserRoutes)
+app.use("/api/users", authenticate, authorizeRoles("superadmin"), adminUserRoutes)
 app.use("/api/team/admin", authenticate, adminTeams)
 app.use("/api/team/invite", teamInviteRoutes);
 app.use("/api/admin/stats", adminStatsRoutes);

@@ -3,14 +3,11 @@ import { Link } from "react-router";
 import { AuthContext } from "@/contexts/Auth";
 
 const SubscriptionPage = () => {
-    const { getUser } = use(AuthContext);
-
-    const user = getUser();
+    const { user } = use(AuthContext);
 
     const subscription = user?.subscription;
 
     const isTeamMember = user?.is_team_member;
-    const isAdmin = user?.role === "admin";
 
     return (
         <div className="p-8">

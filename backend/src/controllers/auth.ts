@@ -32,10 +32,8 @@ const createUser = async (req: Request, res: Response) => {
         const basicPlan = await Plans.findOne({ name: "basic" });
 
         if (!basicPlan) {
-            return res.status(500).json({
-                success: false,
-                message: "Basic plan does not exist"
-            });
+            console.log("User is created without plan. Basic plan does not exists");
+            return res.status(201).json({success: true, message: "User is created successfully!"})
         }
 
         const startDate = new Date();
@@ -84,7 +82,7 @@ const login = async (req: Request, res: Response) => {
         const subscription = await getUserSubscription(
             user._id
         );
-        console.log("subscription2", subscription);
+
         const plan = subscription?.plan_id as IPlan | undefined;
         const usage = subscription?.current_usage ?? 0;
 
@@ -98,15 +96,14 @@ const login = async (req: Request, res: Response) => {
             role: user.role,
             team_id: teamMember?.team_id ?? null,
 
-    is_team_member: !!teamMember,
-    is_individual_customer: !teamMember && user.role === "customer",
+            is_team_member: !!teamMember,
+            is_individual_customer: !teamMember && user.role === "customer",
 
-            subscription: subscription
-                ? {
-                      plan: plan?.name,
-                      limit_exceeded: limitExceeded
-                  }
-                : null
+            subscription: subscription ? {
+                plan: plan?.name,
+                limit_exceeded: limitExceeded
+            }
+            : null
         };
 
 

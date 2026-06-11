@@ -4,8 +4,7 @@ import { use } from "react";
 import { AuthContext } from "@/contexts/Auth";
 
 const AdminLayout = () => {
-    const { getUser } = use(AuthContext);
-    const user = getUser();
+    const { user } = use(AuthContext);
     const navigate = useNavigate();
 
     const onLogout = () => {

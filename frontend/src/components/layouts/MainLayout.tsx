@@ -1,22 +1,16 @@
 import { Outlet, NavLink } from "react-router";
 import { ProfilePopover } from "./ProfilePopover";
 import { AuthContext } from "@/contexts/Auth";
-import { use, useEffect } from "react";
-import { getCurrentUser } from "@/services/auth";
+import { use } from "react";
 
 const MainLayout = () => {
-    const { getUser, setUser } = use(AuthContext);
-    const user = getUser();
+    const { user, loading } = use(AuthContext);
     const plan = user?.subscription?.plan;
 
-    const fetchUser = async () => {
-        const user = await getCurrentUser();
-        setUser(user);
+    if(loading){
+        return <p>Loading...</p>
     }
 
-    useEffect(() => {
-        fetchUser();
-    }, []);
     return (
         <div>
             <header className="px-10 py-4 border border-b shadow-xs flex items-center justify-between">

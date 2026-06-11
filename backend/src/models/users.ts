@@ -1,4 +1,4 @@
-import { Schema, model, type ObjectId, Types } from 'mongoose';
+import { Schema, model, Types } from 'mongoose';
 
 export type UserRole = "customer" | "admin" | "superadmin";
 
